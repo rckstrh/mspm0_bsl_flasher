@@ -14,8 +14,15 @@ class BSL_UART {
         ~BSL_UART();
 
         BSL::AckType connect();
+        std::tuple<BSL::AckType, BSL::_device_info> get_device_info();
+        
     private:
         Serial* serial = nullptr;
+
+            // "cmd global" const stuff
+        static constexpr uint8_t header_len = 3;
+        static constexpr uint8_t crc_len = 4;
+
 
         // hardcoded atm in serial.cpp
         /*

@@ -18,6 +18,9 @@ namespace BSL {
         uint8_t crc[4];         // peripheral interface code
     };
 
+    static constexpr uint8_t CMD_HEADER = 0x80;
+    static constexpr uint8_t RSP_HEADER = 0x08; 
+
     /* types of BSL acknowledgements */
     enum class AckType {
         BSL_ACK                         = 0x00,
@@ -70,14 +73,14 @@ namespace BSL {
     };
 
     struct _device_info {
-        uint8_t cmd_interpreter_version[2];
-        uint8_t build_id[2];
-        uint8_t app_version[4];
-        uint8_t plugin_if_version[2];
-        uint8_t bsl_max_buff_size[2];
-        uint8_t bsl_buff_start_addr[4];
-        uint8_t bcr_conf_id[4];
-        uint8_t bsl_conf_id[4];
+        uint16_t cmd_interpreter_version;
+        uint16_t build_id;
+        uint32_t app_version;
+        uint16_t plugin_if_version;
+        uint16_t bsl_max_buff_size;
+        uint32_t bsl_buff_start_addr;
+        uint32_t bcr_conf_id;
+        uint32_t bsl_conf_id;
     };
 
     class ResponseType {
@@ -137,7 +140,7 @@ namespace BSL {
     * from MSPM0 BSL example
     */
     #define CRC32_POLY 0xEDB88320
-    static uint32_t softwareCRC(const uint8_t *data, uint8_t length)
+    static uint32_t softwareCRC(const char *data, uint8_t length)
     {
         uint32_t ii, jj, byte, crc, mask;
         ;
@@ -181,6 +184,12 @@ namespace BSL {
         default:
             return "default undefined";
         }
+    }
+    
+    static const char* DeviceInfoToString(struct _device_info device_info)
+    {
+        // TODO -> C++20 format maybe?
+        return "";
     }
 
 };

@@ -2,12 +2,11 @@
 
 Serial::Serial(const char* __file) : port(__file)
 {
-    printf("creating serial obj\n");
+    
 }
 
 Serial::~Serial()
 {
-    printf("destroying serial obj\n");
     close(serial_port);
 }
 
@@ -41,7 +40,7 @@ bool Serial::_open()
     tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
 
     tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
-    tty.c_cc[VMIN] = 0;
+    tty.c_cc[VMIN] = 255;
 
     cfsetispeed(&tty, B9600);
     cfsetospeed(&tty, B9600);
@@ -50,12 +49,18 @@ bool Serial::_open()
         printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
         serial_port = -1;
         return false;
-    }    
+    } 
+
+    // flush
+    ioctl(serial_port, TCFLSH, 0); // flush receive
+    ioctl(serial_port, TCFLSH, 1); // flush transmit
+    ioctl(serial_port, TCFLSH, 2); // flush both
+   
 
     return true;
 }
 
-int Serial::writeBytes(char buff[], size_t buf_size) 
+int Serial::writeBytes(const char buff[], size_t buf_size) 
 {
     if (serial_port < 0)
         return -1;

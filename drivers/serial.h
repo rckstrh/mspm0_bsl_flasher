@@ -18,7 +18,7 @@ class Serial {
         ~Serial();
         bool _open();
         int readBytes(char buff[], size_t buf_size);
-        int writeBytes(char buff[], size_t buf_size);
+        int writeBytes(const char buff[], size_t buf_size);
         
     private:
         const char* port;
