@@ -6,6 +6,7 @@
  */
 
 #include "stdint.h"
+#include <unordered_map>
 
 namespace BSL {
 
@@ -25,10 +26,10 @@ namespace BSL {
         BSL_ERROR_PACKET_SIZE_ZERO      = 0x53,
         BSL_ERROR_PACKET_SIZE_TOO_BIG   = 0x54,
         BSL_ERROR_UNKNOWN_ERROR         = 0x55,
-        BSL_ERROR_UNKNOWN_BAUD_RATE     = 0x56
+        BSL_ERROR_UNKNOWN_BAUD_RATE     = 0x56,
+        ERR_TIMEOUT                     = 0xA0,
+        ERR_UNDEFINED                   = 0xA1
     };
-
-    static constexpr uint32_t crc32_initial_seed = 0xFFFFFFFF;
 
     enum class CoreCmd {
         Connection              = 0x12, 
@@ -45,7 +46,7 @@ namespace BSL {
         ChangeBaudrate          = 0x52
     };
 
-    enum class CoreRsp {
+    enum class CoreRspCmd {
         MemoryRead              = 0x30,
         GetDeviceInfo           = 0x31,
         StandaloneVerification  = 0x32,
@@ -78,4 +79,108 @@ namespace BSL {
         uint8_t bcr_conf_id[4];
         uint8_t bsl_conf_id[4];
     };
+
+    class ResponseType {
+        public:
+            ResponseType(uint8_t _header, uint16_t _len, uint8_t _rsp, uint8_t* _data, bool _var_len) : 
+                header(_header), rsp(_rsp), data(_data), variableLen(_var_len) 
+                {
+                    length[0] = (uint8_t) _len;
+                    length[1] = (uint8_t) (_len >> 8);
+                };
+
+            uint8_t header;
+            uint8_t length[2];
+            uint8_t rsp;
+            uint8_t* data;
+            uint8_t crc[4];
+            bool variableLen;
+    };
+
+    struct _core_data_info {
+        //bool protected;
+        uint8_t start_addr_len;
+        int8_t data_len;
+        ResponseType coreResponse;
+    };
+
+    /*
+    static const std::unordered_map<CoreCmd, struct _core_data_info> CoreCommandMap = {
+        {CoreCmd::Connection,               
+            {.start_addr_len = 0, .data_len = 0, .coreResponse = false}},
+        {CoreCmd::UnlockBootloader,         
+            {.start_addr_len = 0, .data_len = 32, .coreResponse = true}},
+        {CoreCmd::FlashRangeErase,          
+            {.start_addr_len = 4, .data_len = 4, .coreResponse = true}},
+        {CoreCmd::MassErase,                
+            {.start_addr_len = 0, .data_len = 0, .coreResponse = true}},
+        {CoreCmd::ProgramData,              
+            {.start_addr_len = 4, .data_len = -1, .coreResponse = true}},
+        {CoreCmd::ProgramDataFast,          
+            {.start_addr_len = 4, .data_len = -1, .coreResponse = false}},
+        {CoreCmd::MemoryRead,               
+            {.start_addr_len = 4, .data_len = 4, .coreResponse = true}},
+        {CoreCmd::FactoryReset,             
+            {.start_addr_len = 0, .data_len = 16, .coreResponse = true}},
+        {CoreCmd::GetDeviceInfo,            
+            {.start_addr_len = 0, .data_len = 0, .coreResponse = true}},
+        {CoreCmd::StandaloneVerification,   
+            {.start_addr_len = 4, .data_len = 4, .coreResponse = true}},
+        {CoreCmd::StartApplication,         
+            {.start_addr_len = 0, .data_len = 0, .coreResponse = false}},
+        {CoreCmd::ChangeBaudrate,           
+            {.start_addr_len = 0, .data_len = 1, .coreResponse = false}}
+    };
+    */
+
+    /*
+    * from MSPM0 BSL example
+    */
+    #define CRC32_POLY 0xEDB88320
+    static uint32_t softwareCRC(const uint8_t *data, uint8_t length)
+    {
+        uint32_t ii, jj, byte, crc, mask;
+        ;
+
+        crc = 0xFFFFFFFF;
+
+        for (ii = 0; ii < length; ii++) {
+            byte = data[ii];
+            crc  = crc ^ byte;
+
+            for (jj = 0; jj < 8; jj++) {
+                mask = -(crc & 1);
+                crc  = (crc >> 1) ^ (CRC32_POLY & mask);
+            }
+        }
+
+        return crc;
+    }
+
+    static const char* AckTypeToString(AckType ack) 
+    {
+        switch(ack) {
+        case AckType::BSL_ACK:
+            return "ACK";                     
+        case AckType::BSL_ERROR_HEADER_INCORRECT:
+            return "Incorrect header";  
+        case AckType::BSL_ERROR_CHECKSUM_INCORRECT:
+            return "Wrong checksum";   
+        case AckType::BSL_ERROR_PACKET_SIZE_ZERO:
+            return "Packet size zero"; 
+        case AckType::BSL_ERROR_PACKET_SIZE_TOO_BIG:
+            return "Packet size too big";   
+        case AckType::BSL_ERROR_UNKNOWN_ERROR:
+            return "BSL unknown error";
+        case AckType::BSL_ERROR_UNKNOWN_BAUD_RATE:
+            return "Unknown baudrate";
+        case AckType::ERR_TIMEOUT:
+            return "Serial timeout";                    
+        case AckType::ERR_UNDEFINED:
+            return "UNDEFINED";   
+        default:
+            return "default undefined";
+        }
+    }
+
 };
