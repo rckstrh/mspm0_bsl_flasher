@@ -10,17 +10,28 @@
 BSLTool::BSLTool()
 {
     uart_wrapper = new BSL_UART("/dev/ttyACM0");
+
     // connect
     {
         printf(">> Connecting\n");
         auto resp = uart_wrapper->connect();
         printf("<< %s\n", BSL::AckTypeToString(resp));
+        if(resp != BSL::AckType::BSL_ACK) {
+            printf("Could not connect. Stopping...\n");
+            return;
+        }
     }
+
     // get device info
     {
         printf(">> Getting device info\n");
         const auto [ack, device_info] = uart_wrapper->get_device_info();
         printf("<< %s\n", BSL::AckTypeToString(ack));
+        if(ack != BSL::AckType::BSL_ACK) {
+            printf("Could not get device info. Stopping...\n");
+            return;
+        }
+
         printf("<< Device Info: \n");
         printf("\tCommand interpreter version: 0x%x\n", device_info.cmd_interpreter_version);
         printf("\tBuild ID: 0x%x\n", device_info.build_id);
@@ -30,6 +41,13 @@ BSLTool::BSLTool()
         printf("\tBSL start address: 0x%x\n", device_info.bsl_buff_start_addr);
         printf("\tBCR conf ID: 0x%x\n", device_info.bcr_conf_id);
         printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
+    }
+
+    // start application
+    {
+        printf(">> Starting application\n");
+        auto resp = uart_wrapper->start_application();
+        printf("<< %s\n", BSL::AckTypeToString(resp));
     }
 };
 

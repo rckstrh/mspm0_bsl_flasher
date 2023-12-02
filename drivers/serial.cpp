@@ -40,7 +40,7 @@ bool Serial::_open()
     tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
 
     tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
-    tty.c_cc[VMIN] = 255;
+    tty.c_cc[VMIN] = 0;
 
     cfsetispeed(&tty, B9600);
     cfsetospeed(&tty, B9600);

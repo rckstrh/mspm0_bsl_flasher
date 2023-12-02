@@ -29,34 +29,34 @@ BSL::AckType BSL_UART::connect()
         throw;
 
     // cmd specific
-    constexpr uint16_t data_length = 1;
+    constexpr uint16_t data_len = 1;
     constexpr uint8_t ack_len = 1;
 
-    constexpr uint8_t bufferLen = header_len+crc_len+data_length;
-    uint8_t buffer[bufferLen] = {0};
+    constexpr uint8_t tx_buffer_len = header_len+crc_len+data_len;
+    uint8_t tx_buf[tx_buffer_len] = {0};
 
     // wrap packet
-    fill_header(buffer, data_length);
+    fill_header(tx_buf, data_len);
     // cmd + data
-    buffer[3] = static_cast<uint8_t> (BSL::CoreCmd::Connection);
+    tx_buf[3] = static_cast<uint8_t> (BSL::CoreCmd::Connection);
     // calc crc over cmd+data
-    auto crc = BSL::softwareCRC((const char*)buffer+header_len, data_length);
+    auto crc = BSL::softwareCRC((const char*)tx_buf+header_len, data_len);
     // append crc
-    *((uint32_t*) (buffer+4)) = crc;
+    *((uint32_t*) (tx_buf+header_len+data_len)) = crc;
     
     // test destroy crc check to check if ACK acts accordingly
     //buffer[5] = 0;
 
 #ifdef DEBUG_PRINT
     printf("Writing: ");
-    for(int i=0; i < bufferLen; i++) {
-        printf("%x ", buffer[i]);
+    for(int i=0; i < tx_buffer_len; i++) {
+        printf("%x ", tx_buf[i]);
     }
     printf("\n");
 #endif
 
     // write packet via uart
-    write_buffer(serial, buffer, bufferLen);
+    write_buffer(serial, tx_buf, tx_buffer_len);
 
     // receive ACK,
     // connection cmd does not send additional response data
@@ -71,30 +71,30 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
         throw;
 
     // cmd specific
-    constexpr uint16_t data_length = 1;
+    constexpr uint16_t data_len = 1;
 
-    constexpr uint8_t bufferLen = header_len+crc_len+data_length;
-    uint8_t buffer[bufferLen] = {0};
+    constexpr uint8_t tx_buffer_len = header_len+crc_len+data_len;
+    uint8_t tx_buf[tx_buffer_len] = {0};
 
     // wrap packet
-    fill_header(buffer, data_length);
+    fill_header(tx_buf, data_len);
     // cmd + data
-    buffer[3] = static_cast<uint8_t> (BSL::CoreCmd::GetDeviceInfo);
+    tx_buf[3] = static_cast<uint8_t> (BSL::CoreCmd::GetDeviceInfo);
     // calc crc over cmd+data
-    auto crc = BSL::softwareCRC(((const char*) buffer)+header_len, data_length);
+    auto crc = BSL::softwareCRC(((const char*) tx_buf)+header_len, data_len);
     // append crc
-    *((uint32_t*) (buffer+4)) = crc;       
+    *((uint32_t*) (tx_buf+header_len+data_len)) = crc;       
 
 #ifdef DEBUG_PRINT
     printf("Writing: ");
-    for(int i=0; i < bufferLen; i++) {
-        printf("%x ", buffer[i]);
+    for(int i=0; i < tx_buffer_len; i++) {
+        printf("%x ", tx_buf[i]);
     }
     printf("\n");
 #endif
 
     // write packet via uart
-    write_buffer(serial, buffer, bufferLen);
+    write_buffer(serial, tx_buf, tx_buffer_len);
 
     // receive ACK,
     auto ack = receive_ack(serial);
@@ -105,16 +105,32 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
     constexpr uint16_t rx_buffer_len = header_len+resp_data_len+crc_len;
     uint8_t rx_buf[rx_buffer_len] = {0};
     int bytes_read = 0;
+
     bytes_read = serial->readBytes((char*) rx_buf, rx_buffer_len);
+    if(bytes_read < 0)
+        throw;
+
     if(bytes_read == 0) {
         printf("Response read timeout\n");
     }
 
-    if(bytes_read < 0)
-        throw;
+    int tries = 10;
+
+    while(bytes_read != rx_buffer_len) {
+        int new_bytes_read = serial->readBytes((char*) rx_buf+bytes_read, rx_buffer_len-bytes_read);
+        bytes_read += new_bytes_read;
+
+        if(new_bytes_read == 0)
+            tries--;
+        
+        if(tries == 0) {
+            printf("Read timeout, stopping!\n");
+            return {BSL::AckType::ERR_TIMEOUT, device_info};
+        }
+    }
 
 #ifdef DEBUG_PRINT
-    printf("Read: ");
+    printf("Read %d bytes: ", bytes_read);
     for(int i=0; i < rx_buffer_len; i++) {
         printf("%x ", rx_buf[i]);
     }
@@ -132,6 +148,43 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
     device_info.bsl_conf_id = *((uint32_t *)(&resp_data[20]));
 
     return {ack, device_info};
+}
+
+BSL::AckType BSL_UART::start_application()
+{
+    if(serial == nullptr)
+        throw;
+
+    // cmd specific
+    constexpr uint16_t data_len = 1;
+
+    constexpr uint8_t tx_buffer_len = header_len+crc_len+data_len;
+    uint8_t tx_buf[tx_buffer_len] = {0};
+
+    // wrap packet
+    fill_header(tx_buf, data_len);
+    // cmd + data
+    tx_buf[3] = static_cast<uint8_t> (BSL::CoreCmd::StartApplication);
+    // calc crc over cmd+data
+    auto crc = BSL::softwareCRC(((const char*) tx_buf)+header_len, data_len);
+    // append crc
+    *((uint32_t*) (tx_buf+4)) = crc;       
+
+#ifdef DEBUG_PRINT
+    printf("Writing: ");
+    for(int i=0; i < tx_buffer_len; i++) {
+        printf("%x ", tx_buf[i]);
+    }
+    printf("\n");
+#endif
+
+    // write packet via uart
+    write_buffer(serial, tx_buf, tx_buffer_len);
+
+    // receive ACK
+    auto ack = receive_ack(serial);
+
+    return ack;
 }
 
 inline void fill_header(uint8_t* buffer, uint16_t data_len)

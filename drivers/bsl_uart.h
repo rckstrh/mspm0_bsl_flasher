@@ -15,6 +15,7 @@ class BSL_UART {
 
         BSL::AckType connect();
         std::tuple<BSL::AckType, BSL::_device_info> get_device_info();
+        BSL::AckType start_application();
         
     private:
         Serial* serial = nullptr;
