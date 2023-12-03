@@ -43,6 +43,16 @@ BSLTool::BSLTool()
         printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
     }
 
+    // unlock bootloader
+    {
+        printf(">> Unlocking bootloader\n");
+        const auto [ack, msg] = uart_wrapper->unlock_bootloader();
+        if(ack != BSL::AckType::BSL_ACK) {
+            printf("Could not unlock bootloader. Please check configured password. Stopping...\n");
+            return;
+        }
+    }
+
     // start application
     {
         printf(">> Starting application\n");

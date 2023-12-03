@@ -69,7 +69,8 @@ namespace BSL {
         FACTORY_RESET_PWD_ERR   = 0x08, // incorrect or no password has been sent with factory reset command
         READOUT_ERR             = 0x09, // memory read out be disabled in BCR configuration
         INV_ADDR_OR_LEN         = 0x0A, // start address or data length for the flash programming is not 8-byte aligned
-        INV_LEN_VERIFICATION    = 0x0B  // data size sent for standalone verification is less than 1KB
+        INV_LEN_VERIFICATION    = 0x0B, // data size sent for standalone verification is less than 1KB
+        BSL_UART_UNDEFINED      = 0xDD
     };
 
     struct _device_info {
@@ -82,59 +83,6 @@ namespace BSL {
         uint32_t bcr_conf_id;
         uint32_t bsl_conf_id;
     };
-
-    class ResponseType {
-        public:
-            ResponseType(uint8_t _header, uint16_t _len, uint8_t _rsp, uint8_t* _data, bool _var_len) : 
-                header(_header), rsp(_rsp), data(_data), variableLen(_var_len) 
-                {
-                    length[0] = (uint8_t) _len;
-                    length[1] = (uint8_t) (_len >> 8);
-                };
-
-            uint8_t header;
-            uint8_t length[2];
-            uint8_t rsp;
-            uint8_t* data;
-            uint8_t crc[4];
-            bool variableLen;
-    };
-
-    struct _core_data_info {
-        //bool protected;
-        uint8_t start_addr_len;
-        int8_t data_len;
-        ResponseType coreResponse;
-    };
-
-    /*
-    static const std::unordered_map<CoreCmd, struct _core_data_info> CoreCommandMap = {
-        {CoreCmd::Connection,               
-            {.start_addr_len = 0, .data_len = 0, .coreResponse = false}},
-        {CoreCmd::UnlockBootloader,         
-            {.start_addr_len = 0, .data_len = 32, .coreResponse = true}},
-        {CoreCmd::FlashRangeErase,          
-            {.start_addr_len = 4, .data_len = 4, .coreResponse = true}},
-        {CoreCmd::MassErase,                
-            {.start_addr_len = 0, .data_len = 0, .coreResponse = true}},
-        {CoreCmd::ProgramData,              
-            {.start_addr_len = 4, .data_len = -1, .coreResponse = true}},
-        {CoreCmd::ProgramDataFast,          
-            {.start_addr_len = 4, .data_len = -1, .coreResponse = false}},
-        {CoreCmd::MemoryRead,               
-            {.start_addr_len = 4, .data_len = 4, .coreResponse = true}},
-        {CoreCmd::FactoryReset,             
-            {.start_addr_len = 0, .data_len = 16, .coreResponse = true}},
-        {CoreCmd::GetDeviceInfo,            
-            {.start_addr_len = 0, .data_len = 0, .coreResponse = true}},
-        {CoreCmd::StandaloneVerification,   
-            {.start_addr_len = 4, .data_len = 4, .coreResponse = true}},
-        {CoreCmd::StartApplication,         
-            {.start_addr_len = 0, .data_len = 0, .coreResponse = false}},
-        {CoreCmd::ChangeBaudrate,           
-            {.start_addr_len = 0, .data_len = 1, .coreResponse = false}}
-    };
-    */
 
     /*
     * from MSPM0 BSL example

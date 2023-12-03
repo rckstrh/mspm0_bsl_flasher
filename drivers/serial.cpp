@@ -39,8 +39,8 @@ bool Serial::_open()
     tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
     tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
 
-    tty.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
-    tty.c_cc[VMIN] = 0;
+    tty.c_cc[VTIME] = 10;   // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
+    tty.c_cc[VMIN] = 0;     // purely time based read
 
     cfsetispeed(&tty, B9600);
     cfsetospeed(&tty, B9600);
@@ -69,11 +69,28 @@ int Serial::writeBytes(const char buff[], size_t buf_size)
     return n;
 }
 
-int Serial::readBytes(char buff[], size_t buf_size) 
+int Serial::readBytes(char buff[], size_t buf_size, int _max_timeout_tries) 
 {
     if (serial_port < 0)
         return -1;
 
-    int n = read(serial_port, buff, buf_size);
-    return n;
+    int timeout_tries = _max_timeout_tries;
+    int bytes_read = 0;
+
+    while(bytes_read != buf_size) {
+        int new_bytes_read = read(serial_port, (char*) buff+bytes_read, buf_size-bytes_read);
+        bytes_read += new_bytes_read;
+
+        if(new_bytes_read == 0)
+            timeout_tries--;
+        else
+            timeout_tries = _max_timeout_tries;
+        
+        if(timeout_tries == 0) {
+            return -1;
+        }
+    }
+
+    //int n = read(serial_port, buff, buf_size);
+    return bytes_read;
 }

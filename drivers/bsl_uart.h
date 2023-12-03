@@ -16,23 +16,20 @@ class BSL_UART {
         BSL::AckType connect();
         std::tuple<BSL::AckType, BSL::_device_info> get_device_info();
         BSL::AckType start_application();
+        std::tuple<BSL::AckType, BSL::RspMsg> unlock_bootloader(const uint8_t* passwd = bootloader_default_pw);
         
     private:
         Serial* serial = nullptr;
 
-            // "cmd global" const stuff
+        // "cmd global" const stuff
         static constexpr uint8_t header_len = 3;
         static constexpr uint8_t crc_len = 4;
+        static constexpr uint8_t password_len = 32;
 
-
-        // hardcoded atm in serial.cpp
-        /*
-        struct _uart_conf {
-            unsigned int baud;
-            unsigned int data_width;
-            unsigned int stop_bits;
-            bool parity;
-            std::string port;
-        } uart_conf = {.baud=9600, .data_width=8, .stop_bits=1, .parity=false, .port=""};    
-        */
+        static constexpr uint8_t bootloader_default_pw[password_len] = {
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+        };
 };

@@ -17,7 +17,7 @@ class Serial {
         Serial(const char* __file);
         ~Serial();
         bool _open();
-        int readBytes(char buff[], size_t buf_size);
+        int readBytes(char buff[], size_t buf_size, int _max_timeout_tries=10);
         int writeBytes(const char buff[], size_t buf_size);
         
     private:
