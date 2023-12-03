@@ -140,7 +140,7 @@ namespace BSL {
     * from MSPM0 BSL example
     */
     #define CRC32_POLY 0xEDB88320
-    static uint32_t softwareCRC(const char *data, uint8_t length)
+    inline uint32_t softwareCRC(const uint8_t *data, uint8_t length)
     {
         uint32_t ii, jj, byte, crc, mask;
         ;
