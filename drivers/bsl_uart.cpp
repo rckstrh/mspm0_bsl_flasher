@@ -234,7 +234,6 @@ BSL::AckType BSL_UART::change_baudrate(BSL::Baudrate rate)
     auto ack = BSL::AckType::ERR_UNDEFINED;
 
     constexpr uint16_t tx_data_len = 2;
-
     constexpr uint8_t tx_buffer_len = header_len+crc_len+tx_data_len;
     uint8_t tx_buf[tx_buffer_len] = {0};
 
@@ -257,6 +256,54 @@ BSL::AckType BSL_UART::change_baudrate(BSL::Baudrate rate)
     }
 
     return ack;
+}
+
+std::tuple<BSL::AckType, BSL::CoreMessage, uint32_t> BSL_UART::verify(const uint32_t addr, const uint32_t size)
+{
+    auto ack = BSL::AckType::ERR_UNDEFINED;
+    auto msg = BSL::CoreMessage::BSL_UART_UNDEFINED;
+    uint32_t mem_block_crc = 0;
+
+    constexpr uint16_t tx_data_len = 9;
+    constexpr uint8_t tx_buffer_len = header_len+crc_len+tx_data_len;
+    uint8_t tx_buf[tx_buffer_len] = {0};
+
+    uint8_t cmd_data[8];
+    *((uint32_t*) cmd_data) = addr;
+    *((uint32_t*) cmd_data+1) = size;
+
+    // wrap packet
+    fill_cmd_header(tx_buf, tx_data_len, BSL::CoreCmd::StandaloneVerification);
+    fill_cmd_data(tx_buf, cmd_data, 8);
+    auto crc = BSL::softwareCRC(tx_buf+header_len, tx_data_len);
+    // append crc
+    *((uint32_t*) (tx_buf+header_len+tx_data_len)) = crc;
+
+    // write and get ack
+    write_buffer(serial, tx_buf, tx_buffer_len);
+    ack = receive_ack(serial);
+
+
+    // receive core message
+    constexpr uint16_t resp_data_len = 0x05;
+    constexpr uint16_t rx_buffer_len = header_len+resp_data_len+crc_len;
+    uint8_t rx_buf[rx_buffer_len] = {0};
+    int bytes_read = 0;
+
+    bytes_read = serial->readBytes((char*) rx_buf, rx_buffer_len);
+    if(bytes_read != rx_buffer_len)
+        return {BSL::AckType::ERR_TIMEOUT, msg, mem_block_crc};
+
+    uint8_t* resp_code = rx_buf+header_len;
+    if(static_cast<BSL::CoreResponse>(*resp_code) != BSL::CoreResponse::StandaloneVerification)
+        return {ack, static_cast<BSL::CoreMessage>(*resp_code+1), 0};
+
+    uint8_t* resp_data = resp_code+1;
+
+    mem_block_crc = *((uint32_t*)resp_data);
+
+
+    return {ack, msg, mem_block_crc};
 }
 
 void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd)

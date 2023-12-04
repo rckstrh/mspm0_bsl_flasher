@@ -87,7 +87,7 @@ int Serial::writeBytes(const char buff[], size_t buf_size)
 #ifdef DEBUG_PRINT
     printf("Serial write %ld bytes: ", buf_size);
     for(int i=0; i < buf_size; i++) {
-        printf("%x ", (unsigned char) buff[i]);
+        printf("%02x ", (unsigned char) buff[i]);
     }
     printf("\n");
 #endif 
@@ -121,7 +121,7 @@ int Serial::readBytes(char buff[], size_t buf_size, int _max_timeout_tries)
 #ifdef DEBUG_PRINT
     printf("Serial read %d bytes: ", bytes_read);
     for(int i=0; i < bytes_read; i++) {
-        printf("%x ", (unsigned char) buff[i]);
+        printf("%02x ", (unsigned char) buff[i]);
     }
     printf("\n");
 #endif

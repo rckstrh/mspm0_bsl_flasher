@@ -18,6 +18,7 @@ class BSL_UART {
         BSL::AckType start_application();
         std::tuple<BSL::AckType, BSL::CoreMessage> unlock_bootloader(const uint8_t* passwd = bootloader_default_pw);
         std::tuple<BSL::AckType, BSL::CoreMessage> readback_data(const uint32_t addr, const uint32_t readback_len, uint8_t *dst);
+        std::tuple<BSL::AckType, BSL::CoreMessage, uint32_t> verify(const uint32_t addr, const uint32_t size);
         void set_bsl_max_buff_size(uint32_t _bsl_max_buff_size);
         BSL::AckType change_baudrate(BSL::Baudrate rate);
         

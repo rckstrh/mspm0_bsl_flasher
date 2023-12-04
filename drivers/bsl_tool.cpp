@@ -58,6 +58,8 @@ BSLTool::BSLTool()
     {
         printf(">> Unlocking bootloader\n");
         const auto [ack, msg] = uart_wrapper->unlock_bootloader();
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+
         if(ack != BSL::AckType::BSL_ACK) {
             printf("Could not unlock bootloader. Please check configured password. Stopping...\n");
             return;
@@ -66,16 +68,28 @@ BSLTool::BSLTool()
 
     // read back program
     {
-        printf(">> Reading some memory @0x00 \n");
         constexpr uint32_t read_len = 4;
         constexpr uint32_t addr = 0x00;
+        printf(">> Reading some memory @0x%08x, size=%d\n", addr, read_len);
         uint8_t mem_data[read_len];
         const auto [ack, msg] = uart_wrapper->readback_data(addr, read_len, mem_data);
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+
         if(ack != BSL::AckType::BSL_ACK) {
             printf("<< %s\n", BSL::AckTypeToString(ack));
             printf("Read data. Stopping...\n");
             return;
         }
+    }
+
+    // verify/standalone CRC some block for debugging
+    {
+        constexpr uint32_t block_size = 1024;
+        constexpr uint32_t addr = 0x00;
+        printf(">> Standalone verification @0x%08x, size=%dbytes\n", addr, block_size);
+        const auto [ack, msg, crc] = uart_wrapper->verify(addr, block_size);
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+
     }
 
     // start application
