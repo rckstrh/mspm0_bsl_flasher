@@ -6,9 +6,7 @@
  */
 #include "bsl_uart.h"
 
-#define DEBUG_PRINT
-
-void fill_header(uint8_t* buffer, uint16_t data_len);
+void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd);
 void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_len);
 BSL::AckType receive_ack(Serial* serial);
 
@@ -36,24 +34,11 @@ BSL::AckType BSL_UART::connect()
     uint8_t tx_buf[tx_buffer_len] = {0};
 
     // wrap packet
-    fill_header(tx_buf, data_len);
-    // cmd + data
-    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::Connection);
+    fill_cmd_header(tx_buf, data_len, BSL::CoreCmd::Connection);
     // calc crc over cmd+data
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
     *((uint32_t*) (tx_buf+header_len+data_len)) = crc;
-    
-    // test destroy crc check to check if ACK acts accordingly
-    //buffer[5] = 0;
-
-#ifdef DEBUG_PRINT
-    printf("Writing: ");
-    for(int i=0; i < tx_buffer_len; i++) {
-        printf("%x ", tx_buf[i]);
-    }
-    printf("\n");
-#endif
 
     // write packet via uart
     write_buffer(serial, tx_buf, tx_buffer_len);
@@ -77,21 +62,11 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
     uint8_t tx_buf[tx_buffer_len] = {0};
 
     // wrap packet
-    fill_header(tx_buf, data_len);
-    // cmd + data
-    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::GetDeviceInfo);
+    fill_cmd_header(tx_buf, data_len, BSL::CoreCmd::GetDeviceInfo);
     // calc crc over cmd+data
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
     *((uint32_t*) (tx_buf+header_len+data_len)) = crc;       
-
-#ifdef DEBUG_PRINT
-    printf("Writing: ");
-    for(int i=0; i < tx_buffer_len; i++) {
-        printf("%x ", tx_buf[i]);
-    }
-    printf("\n");
-#endif
 
     // write packet via uart
     write_buffer(serial, tx_buf, tx_buffer_len);
@@ -110,13 +85,6 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
     if(bytes_read != rx_buffer_len)
         return {BSL::AckType::ERR_TIMEOUT, device_info};
 
-#ifdef DEBUG_PRINT
-    printf("Read %d bytes: ", bytes_read);
-    for(int i=0; i < rx_buffer_len; i++) {
-        printf("%x ", rx_buf[i]);
-    }
-    printf("\n");
-#endif
     uint8_t* resp_code = rx_buf+header_len;
     uint8_t* resp_data = resp_code+1;
 
@@ -151,21 +119,11 @@ BSL::AckType BSL_UART::start_application()
     uint8_t tx_buf[tx_buffer_len] = {0};
 
     // wrap packet
-    fill_header(tx_buf, data_len);
-    // cmd + data
-    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::StartApplication);
+    fill_cmd_header(tx_buf, data_len, BSL::CoreCmd::StartApplication);
     // calc crc over cmd+data
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
     *((uint32_t*) (tx_buf+4)) = crc;       
-
-#ifdef DEBUG_PRINT
-    printf("Writing: ");
-    for(int i=0; i < tx_buffer_len; i++) {
-        printf("%x ", tx_buf[i]);
-    }
-    printf("\n");
-#endif
 
     // write packet via uart
     write_buffer(serial, tx_buf, tx_buffer_len);
@@ -187,21 +145,12 @@ std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::unlock_bootloader(const uin
     constexpr uint8_t tx_buffer_len = header_len+crc_len+data_len;
     uint8_t tx_buf[tx_buffer_len] = {0};
 
-    fill_header(tx_buf, data_len);
-    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::UnlockBootloader);
+    fill_cmd_header(tx_buf, data_len, BSL::CoreCmd::UnlockBootloader);
     memcpy(&tx_buf[header_len+1], passwd, password_len);
     
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
     *((uint32_t*) (tx_buf+header_len+data_len)) = crc;    
-
-#ifdef DEBUG_PRINT
-    printf("Writing: ");
-    for(int i=0; i < tx_buffer_len; i++) {
-        printf("%x ", tx_buf[i]);
-    }
-    printf("\n");
-#endif 
 
     write_buffer(serial, tx_buf, tx_buffer_len);
     auto ack = receive_ack(serial);
@@ -216,14 +165,6 @@ std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::unlock_bootloader(const uin
     bytes_read = serial->readBytes((char*) rx_buf, rx_buffer_len);
     if(bytes_read != rx_buffer_len)
         return {BSL::AckType::ERR_TIMEOUT, msg};
-
-#ifdef DEBUG_PRINT
-    printf("Read %d bytes: ", bytes_read);
-    for(int i=0; i < rx_buffer_len; i++) {
-        printf("%x ", rx_buf[i]);
-    }
-    printf("\n");
-#endif
 
     uint8_t* resp_code = rx_buf+header_len;
     if(static_cast<BSL::CoreResponse>(*resp_code) != BSL::CoreResponse::Message)
@@ -248,22 +189,14 @@ std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::readback_data(const uint32_
     constexpr uint8_t tx_buffer_len = header_len+crc_len+tx_data_len;
     uint8_t tx_buf[tx_buffer_len] = {0};
 
-    fill_header(tx_buf, tx_data_len);
-    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::MemoryRead);
+    fill_cmd_header(tx_buf, tx_data_len, BSL::CoreCmd::MemoryRead);
+
     *((uint32_t*) (&tx_buf[header_len+1])) = addr; 
     *((uint32_t*) (&tx_buf[header_len+5])) = readback_len; 
     
     auto crc = BSL::softwareCRC(tx_buf+header_len, tx_data_len);
     // append crc
     *((uint32_t*) (tx_buf+header_len+tx_data_len)) = crc;
-
-#ifdef DEBUG_PRINT
-    printf("Writing: ");
-    for(int i=0; i < tx_buffer_len; i++) {
-        printf("%x ", tx_buf[i]);
-    }
-    printf("\n");
-#endif   
 
     write_buffer(serial, tx_buf, tx_buffer_len);
     ack = receive_ack(serial);
@@ -295,11 +228,20 @@ std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::readback_data(const uint32_
     return {ack, msg};
 }
 
-inline void fill_header(uint8_t* buffer, uint16_t data_len)
+BSL::AckType BSL_UART::change_baudrate(BSL::Baudrate rate)
+{
+    auto ack = BSL::AckType::ERR_UNDEFINED;
+
+
+    return ack;
+}
+
+inline void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd)
 {
     // header + data length
     *buffer = BSL::CMD_HEADER; 
     *((uint16_t *)(buffer+1)) = data_len;
+    *(buffer+3) = static_cast<uint8_t>(cmd);
 }
 
 inline void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_len)
@@ -313,14 +255,12 @@ inline void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_le
 
 BSL::AckType receive_ack(Serial* serial)
 {
-    // receive ACK,
-    // connection cmd does not send additional response data
+    // receive ACK
     BSL::AckType ack;
     char rxByte = 0xFF;
     int bytes_read = 0;
     bytes_read = serial->readBytes(&rxByte, 1);
     if(bytes_read == 0) {
-        //printf("Read timeout\n");
         return BSL::AckType::ERR_TIMEOUT;
     }
 
@@ -328,12 +268,6 @@ BSL::AckType receive_ack(Serial* serial)
         return BSL::AckType::ERR_UNDEFINED;
 
     ack = static_cast<BSL::AckType>(rxByte);
-
-#ifdef DEBUG_PRINT
-    if(bytes_read == 1) {
-        printf("Read: %x\n", (uint8_t) ack);
-    }
-#endif
 
     return ack;
 }

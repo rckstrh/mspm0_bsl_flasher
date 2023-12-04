@@ -73,6 +73,19 @@ namespace BSL {
         BSL_UART_UNDEFINED      = 0xDD
     };
 
+    
+    enum class Baudrate {
+        BSL_B4800       = 0x1,
+        BSL_B9600       = 0x2,
+        BSL_B19200      = 0x3,
+        BSL_B38400      = 0x4,
+        BSL_B57600      = 0x5,
+        BSL_B115200     = 0x6,
+        BSL_B1000000    = 0x7,
+        BSL_B2000000    = 0x8,
+        BSL_B3000000    = 0x9
+    };
+
     struct _device_info {
         uint16_t cmd_interpreter_version;
         uint16_t build_id;

@@ -1,5 +1,7 @@
 #include "serial.h"
 
+#define DEBUG_PRINT
+
 Serial::Serial(const char* __file) : port(__file)
 {
     
@@ -7,7 +9,7 @@ Serial::Serial(const char* __file) : port(__file)
 
 Serial::~Serial()
 {
-    close(serial_port);
+    _close();
 }
 
 bool Serial::_open()
@@ -42,8 +44,7 @@ bool Serial::_open()
     tty.c_cc[VTIME] = 10;   // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
     tty.c_cc[VMIN] = 0;     // purely time based read
 
-    cfsetispeed(&tty, B9600);
-    cfsetospeed(&tty, B9600);
+    change_baud(B9600);
 
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
         printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
@@ -51,19 +52,45 @@ bool Serial::_open()
         return false;
     } 
 
-    // flush
-    ioctl(serial_port, TCFLSH, 0); // flush receive
-    ioctl(serial_port, TCFLSH, 1); // flush transmit
-    ioctl(serial_port, TCFLSH, 2); // flush both
+    _flush();
    
 
     return true;
+}
+
+inline void Serial::change_baud(speed_t __speed)
+{
+    cfsetispeed(&tty, B9600);
+    cfsetospeed(&tty, B9600);
+}
+
+inline void Serial::_flush()
+{
+    ioctl(serial_port, TCFLSH, 0); // flush receive
+    ioctl(serial_port, TCFLSH, 1); // flush transmit
+    ioctl(serial_port, TCFLSH, 2); // flush both
+}
+
+int Serial::_close() 
+{
+    if(serial_port >= 0)
+        return close(serial_port);
+    
+    return -1;
 }
 
 int Serial::writeBytes(const char buff[], size_t buf_size) 
 {
     if (serial_port < 0)
         return -1;
+
+#ifdef DEBUG_PRINT
+    printf("Serial write %ld bytes: ", buf_size);
+    for(int i=0; i < buf_size; i++) {
+        printf("%x ", (unsigned char) buff[i]);
+    }
+    printf("\n");
+#endif 
 
     int n = write(serial_port, buff, buf_size);
     return n;
@@ -91,6 +118,13 @@ int Serial::readBytes(char buff[], size_t buf_size, int _max_timeout_tries)
         }
     }
 
-    //int n = read(serial_port, buff, buf_size);
+#ifdef DEBUG_PRINT
+    printf("Serial read %d bytes: ", bytes_read);
+    for(int i=0; i < bytes_read; i++) {
+        printf("%x ", (unsigned char) buff[i]);
+    }
+    printf("\n");
+#endif
+
     return bytes_read;
 }

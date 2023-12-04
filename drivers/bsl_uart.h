@@ -19,6 +19,7 @@ class BSL_UART {
         std::tuple<BSL::AckType, BSL::CoreMessage> unlock_bootloader(const uint8_t* passwd = bootloader_default_pw);
         std::tuple<BSL::AckType, BSL::CoreMessage> readback_data(const uint32_t addr, const uint32_t readback_len, uint8_t *dst);
         void set_bsl_max_buff_size(uint32_t _bsl_max_buff_size);
+        BSL::AckType change_baudrate(BSL::Baudrate rate);
         
     private:
         Serial* serial = nullptr;
@@ -35,5 +36,5 @@ class BSL_UART {
             0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
         };
 
-        uint32_t bsl_max_buff_size;
+        uint32_t bsl_max_buff_size = 0;
 };

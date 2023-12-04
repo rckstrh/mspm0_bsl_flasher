@@ -22,6 +22,17 @@ BSLTool::BSLTool()
         }
     }
 
+    // change baud
+    {
+        printf(">> Changing baudrate to 115200\n");
+        auto resp = uart_wrapper->change_baudrate(BSL::Baudrate::BSL_B115200);
+        printf("<< %s\n", BSL::AckTypeToString(resp));
+        if(resp != BSL::AckType::BSL_ACK) {
+            printf("Could not change baudrate. Stopping...\n");
+            //return;
+        }
+    }
+
     // get device info
     {
         printf(">> Getting device info\n");
