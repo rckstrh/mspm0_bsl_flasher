@@ -49,7 +49,7 @@ namespace BSL {
         ChangeBaudrate          = 0x52
     };
 
-    enum class CoreRspCmd {
+    enum class CoreResponse {
         MemoryRead              = 0x30,
         GetDeviceInfo           = 0x31,
         StandaloneVerification  = 0x32,
@@ -57,7 +57,7 @@ namespace BSL {
         DetailedError           = 0x3A
     };
 
-    enum class RspMsg {
+    enum class CoreMessage {
         SUCCESS                 = 0x00,     
         BSL_LOCKED              = 0x01, // BSL is not yet unlocked with Bootloader unlock password command or After BSL unlock
         BSL_PWD_ERR             = 0x02, // incorrect password has been sent to unlock bootloader
@@ -129,6 +129,40 @@ namespace BSL {
             return "Serial timeout";                    
         case AckType::ERR_UNDEFINED:
             return "UNDEFINED";   
+        default:
+            return "default undefined";
+        }
+    }
+
+    static const char* CoreMessageToString(CoreMessage msg) 
+    {
+        switch(msg) {
+        case CoreMessage::SUCCESS:
+
+        case CoreMessage::BSL_LOCKED:
+            return "BSL is not yet unlocked with Bootloader unlock password command or After BSL unlock";
+        case CoreMessage::BSL_PWD_ERR:
+            return "incorrect password has been sent to unlock bootloader";
+        case CoreMessage::BSL_MULTIPLE_PWD_ERR:
+            return "incorrect password has been sent to unlock bootloader 3 times";
+        case CoreMessage::UNKNOWN_CMD:
+            return "command given to the BSL was not recognized as valid command";
+        case CoreMessage::INVALID_MEM_RANGE:
+            return "given memory range is invalid";
+        case CoreMessage::INVALID_CMD:
+            return "command given to BSL is known command but it is invalid at that time instant and cannot be processed";
+        case CoreMessage::FACTORY_RESET_DISABLED:
+            return "factory reset is disabled in the BCR configuration";
+        case CoreMessage::FACTORY_RESET_PWD_ERR:
+            return "incorrect or no password has been sent with factory reset command";
+        case CoreMessage::READOUT_ERR:
+            return "memory read out be disabled in BCR configuration";
+        case CoreMessage::INV_ADDR_OR_LEN:
+            return "start address or data length for the flash programming is not 8-byte aligned";
+        case CoreMessage::INV_LEN_VERIFICATION:
+            return "data size sent for standalone verification is less than 1KB";
+        case CoreMessage::BSL_UART_UNDEFINED:
+            return "UNDEFINED";
         default:
             return "default undefined";
         }

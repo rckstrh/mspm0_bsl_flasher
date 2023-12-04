@@ -38,7 +38,7 @@ BSL::AckType BSL_UART::connect()
     // wrap packet
     fill_header(tx_buf, data_len);
     // cmd + data
-    tx_buf[3] = static_cast<uint8_t> (BSL::CoreCmd::Connection);
+    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::Connection);
     // calc crc over cmd+data
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
@@ -79,7 +79,7 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
     // wrap packet
     fill_header(tx_buf, data_len);
     // cmd + data
-    tx_buf[3] = static_cast<uint8_t> (BSL::CoreCmd::GetDeviceInfo);
+    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::GetDeviceInfo);
     // calc crc over cmd+data
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
@@ -129,7 +129,14 @@ std::tuple<BSL::AckType, BSL::_device_info> BSL_UART::get_device_info()
     device_info.bcr_conf_id = *((uint32_t *)(&resp_data[16]));
     device_info.bsl_conf_id = *((uint32_t *)(&resp_data[20]));
 
+    set_bsl_max_buff_size(device_info.bsl_max_buff_size);
+
     return {ack, device_info};
+}
+
+void BSL_UART::set_bsl_max_buff_size(uint32_t _bsl_max_buff_size)
+{
+    bsl_max_buff_size = _bsl_max_buff_size;
 }
 
 BSL::AckType BSL_UART::start_application()
@@ -146,7 +153,7 @@ BSL::AckType BSL_UART::start_application()
     // wrap packet
     fill_header(tx_buf, data_len);
     // cmd + data
-    tx_buf[3] = static_cast<uint8_t> (BSL::CoreCmd::StartApplication);
+    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::StartApplication);
     // calc crc over cmd+data
     auto crc = BSL::softwareCRC(tx_buf+header_len, data_len);
     // append crc
@@ -169,7 +176,7 @@ BSL::AckType BSL_UART::start_application()
     return ack;
 }
 
-std::tuple<BSL::AckType, BSL::RspMsg> BSL_UART::unlock_bootloader(const uint8_t* passwd)
+std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::unlock_bootloader(const uint8_t* passwd)
 {   
     if(serial == nullptr)
         throw;   
@@ -200,7 +207,7 @@ std::tuple<BSL::AckType, BSL::RspMsg> BSL_UART::unlock_bootloader(const uint8_t*
     auto ack = receive_ack(serial);
 
     // receive core message
-    BSL::RspMsg msg = BSL::RspMsg::BSL_UART_UNDEFINED;
+    BSL::CoreMessage msg = BSL::CoreMessage::BSL_UART_UNDEFINED;
     constexpr uint16_t resp_data_len = 0x02;
     constexpr uint16_t rx_buffer_len = header_len+resp_data_len+crc_len;
     uint8_t rx_buf[rx_buffer_len] = {0};
@@ -219,12 +226,71 @@ std::tuple<BSL::AckType, BSL::RspMsg> BSL_UART::unlock_bootloader(const uint8_t*
 #endif
 
     uint8_t* resp_code = rx_buf+header_len;
-    if(static_cast<BSL::CoreRspCmd>(*resp_code) != BSL::CoreRspCmd::Message)
-        return {ack, BSL::RspMsg::BSL_UART_UNDEFINED};
+    if(static_cast<BSL::CoreResponse>(*resp_code) != BSL::CoreResponse::Message)
+        return {ack, BSL::CoreMessage::BSL_UART_UNDEFINED};
 
     uint8_t* resp_data = resp_code+1;
 
-    msg = static_cast<BSL::RspMsg>(*resp_data);
+    msg = static_cast<BSL::CoreMessage>(*resp_data);
+
+    return {ack, msg};
+}
+
+std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::readback_data(const uint32_t addr, const uint32_t readback_len, uint8_t *dst)
+{
+    if(serial == nullptr)
+        throw;  
+
+    auto ack = BSL::AckType::ERR_UNDEFINED;
+    auto msg = BSL::CoreMessage::BSL_UART_UNDEFINED;
+
+    constexpr uint16_t tx_data_len = 9;
+    constexpr uint8_t tx_buffer_len = header_len+crc_len+tx_data_len;
+    uint8_t tx_buf[tx_buffer_len] = {0};
+
+    fill_header(tx_buf, tx_data_len);
+    tx_buf[header_len] = static_cast<uint8_t> (BSL::CoreCmd::MemoryRead);
+    *((uint32_t*) (&tx_buf[header_len+1])) = addr; 
+    *((uint32_t*) (&tx_buf[header_len+5])) = readback_len; 
+    
+    auto crc = BSL::softwareCRC(tx_buf+header_len, tx_data_len);
+    // append crc
+    *((uint32_t*) (tx_buf+header_len+tx_data_len)) = crc;
+
+#ifdef DEBUG_PRINT
+    printf("Writing: ");
+    for(int i=0; i < tx_buffer_len; i++) {
+        printf("%x ", tx_buf[i]);
+    }
+    printf("\n");
+#endif   
+
+    write_buffer(serial, tx_buf, tx_buffer_len);
+    ack = receive_ack(serial);
+
+    if(ack != BSL::AckType::BSL_ACK) {
+        return {ack, msg};
+    }
+
+    const uint16_t resp_data_len = 1+readback_len;
+    const uint16_t rx_buffer_len = header_len+resp_data_len+crc_len;
+    uint8_t rx_buf[rx_buffer_len] = {0};
+    int bytes_read = 0;
+
+    // read header, length and rsp code first to check if read is valid
+    bytes_read = serial->readBytes((char*) rx_buf, 9);
+    if(bytes_read != 9)
+        return {BSL::AckType::ERR_TIMEOUT, msg};
+
+    uint8_t resp_code = *(rx_buf+header_len);
+
+    if(static_cast<BSL::CoreResponse>(resp_code) != BSL::CoreResponse::MemoryRead) {
+        printf("Failed to read. Reason: %s\n", BSL::CoreMessageToString(static_cast<BSL::CoreMessage>(*(rx_buf+header_len+1))));
+    }
+
+    // implement read out of memory if BCR configuration allows it
+    // postponed for now.
+
 
     return {ack, msg};
 }

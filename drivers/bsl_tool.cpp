@@ -53,6 +53,20 @@ BSLTool::BSLTool()
         }
     }
 
+    // read back program
+    {
+        printf(">> Reading some memory @0x00 \n");
+        constexpr uint32_t read_len = 4;
+        constexpr uint32_t addr = 0x00;
+        uint8_t mem_data[read_len];
+        const auto [ack, msg] = uart_wrapper->readback_data(addr, read_len, mem_data);
+        if(ack != BSL::AckType::BSL_ACK) {
+            printf("<< %s\n", BSL::AckTypeToString(ack));
+            printf("Read data. Stopping...\n");
+            return;
+        }
+    }
+
     // start application
     {
         printf(">> Starting application\n");
