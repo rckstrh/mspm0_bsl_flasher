@@ -180,6 +180,32 @@ namespace BSL {
             return "default undefined";
         }
     }
+
+    static speed_t BSLBaudToSerialBaud(Baudrate rate)
+    {
+        switch(rate) {
+        case Baudrate::BSL_B4800:
+            return B4800;
+        case Baudrate::BSL_B9600:
+            return B9600;
+        case Baudrate::BSL_B19200:
+            return B19200;
+        case Baudrate::BSL_B38400:
+            return B38400;
+        case Baudrate::BSL_B57600:
+            return B57600;
+        case Baudrate::BSL_B115200:
+            return B115200;
+        case Baudrate::BSL_B1000000:
+            return B1000000;
+        case Baudrate::BSL_B2000000:
+            return B2000000;
+        case Baudrate::BSL_B3000000:
+            return B3000000;
+        default:
+            return B9600;      
+        }
+    }
     
     static const char* DeviceInfoToString(struct _device_info device_info)
     {

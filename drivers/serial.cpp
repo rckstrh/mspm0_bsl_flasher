@@ -12,7 +12,7 @@ Serial::~Serial()
     _close();
 }
 
-bool Serial::_open()
+bool Serial::_open(speed_t __speed)
 {
     serial_port = open(port, O_RDWR);
     if (serial_port < 0) {
@@ -44,7 +44,7 @@ bool Serial::_open()
     tty.c_cc[VTIME] = 10;   // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
     tty.c_cc[VMIN] = 0;     // purely time based read
 
-    change_baud(B9600);
+    change_baud(__speed);
 
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
         printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
@@ -60,8 +60,8 @@ bool Serial::_open()
 
 inline void Serial::change_baud(speed_t __speed)
 {
-    cfsetispeed(&tty, B9600);
-    cfsetospeed(&tty, B9600);
+    cfsetispeed(&tty, __speed);
+    cfsetospeed(&tty, __speed);
 }
 
 inline void Serial::_flush()

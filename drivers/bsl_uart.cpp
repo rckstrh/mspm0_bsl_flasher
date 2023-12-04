@@ -7,6 +7,7 @@
 #include "bsl_uart.h"
 
 void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd);
+void fill_cmd_data(uint8_t *buffer, uint8_t *data, size_t data_len);
 void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_len);
 BSL::AckType receive_ack(Serial* serial);
 
@@ -232,11 +233,33 @@ BSL::AckType BSL_UART::change_baudrate(BSL::Baudrate rate)
 {
     auto ack = BSL::AckType::ERR_UNDEFINED;
 
+    constexpr uint16_t tx_data_len = 2;
+
+    constexpr uint8_t tx_buffer_len = header_len+crc_len+tx_data_len;
+    uint8_t tx_buf[tx_buffer_len] = {0};
+
+    uint8_t cmd_data[1] = {static_cast<uint8_t>(rate)};
+
+    // wrap packet
+    fill_cmd_header(tx_buf, tx_data_len, BSL::CoreCmd::ChangeBaudrate);
+    fill_cmd_data(tx_buf, cmd_data, 1);
+    auto crc = BSL::softwareCRC(tx_buf+header_len, tx_data_len);
+    // append crc
+    *((uint32_t*) (tx_buf+header_len+tx_data_len)) = crc;
+
+    // write and get ack
+    write_buffer(serial, tx_buf, tx_buffer_len);
+    ack = receive_ack(serial);
+
+    if(ack == BSL::AckType::BSL_ACK) {
+        serial->_close();
+        serial->_open(BSL::BSLBaudToSerialBaud(rate));
+    }
 
     return ack;
 }
 
-inline void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd)
+void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd)
 {
     // header + data length
     *buffer = BSL::CMD_HEADER; 
@@ -244,7 +267,12 @@ inline void fill_cmd_header(uint8_t* buffer, uint16_t data_len, BSL::CoreCmd cmd
     *(buffer+3) = static_cast<uint8_t>(cmd);
 }
 
-inline void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_len)
+void fill_cmd_data(uint8_t *buffer, uint8_t *data, size_t data_len)
+{
+    memcpy(buffer+4, data, data_len);
+}
+
+void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_len)
 {
     int bytesWritten = 0;
     bytesWritten = serial->writeBytes((const char*) buffer, buffer_len);

@@ -22,7 +22,7 @@ BSLTool::BSLTool()
         }
     }
 
-    // change baud
+    // change baud in BSL
     {
         printf(">> Changing baudrate to 115200\n");
         auto resp = uart_wrapper->change_baudrate(BSL::Baudrate::BSL_B115200);

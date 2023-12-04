@@ -16,7 +16,7 @@ class Serial {
     public:
         Serial(const char* __file);
         ~Serial();
-        bool _open();
+        bool _open(speed_t __speed = B9600);
         int _close();
         void _flush();
         void change_baud(speed_t __speed);
