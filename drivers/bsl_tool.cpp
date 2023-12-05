@@ -6,6 +6,10 @@
  */
 
 #include "bsl_tool.h"
+#include "testprog.h"
+#include <chrono>
+#include <thread>
+
 
 BSLTool::BSLTool()
 {
@@ -21,6 +25,7 @@ BSLTool::BSLTool()
             return;
         }
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     // change baud in BSL
     {
@@ -32,6 +37,8 @@ BSLTool::BSLTool()
             //return;
         }
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
 
     // get device info
     {
@@ -53,6 +60,7 @@ BSLTool::BSLTool()
         printf("\tBCR conf ID: 0x%x\n", device_info.bcr_conf_id);
         printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // unlock bootloader
     {
@@ -65,8 +73,10 @@ BSLTool::BSLTool()
             return;
         }
     }
+    //sleep(1);
 
     // read back program
+    /*
     {
         constexpr uint32_t read_len = 4;
         constexpr uint32_t addr = 0x00;
@@ -81,7 +91,9 @@ BSLTool::BSLTool()
             return;
         }
     }
+    */
 
+    /*
     // verify/standalone CRC some block for debugging
     {
         constexpr uint32_t block_size = 1024;
@@ -90,6 +102,23 @@ BSLTool::BSLTool()
         const auto [ack, msg, crc] = uart_wrapper->verify(addr, block_size);
         printf("<< %s\n", BSL::AckTypeToString(ack));
 
+    }
+    */
+
+    // mass erase, program data may be faulty otherwise
+    {
+        printf(">> Mass erase before programming\n");
+        const auto [ack, msg] = uart_wrapper->mass_erase();
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+    }
+    
+
+    // write 8 testbytes at specified test location in blinky
+    {
+        constexpr uint32_t addr =  0x0;
+        uint32_t size =  blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin_len;
+        printf(">> Program data @0x%08x, size=%d bytes\n", addr, size);
+        const auto [ack, msg] = uart_wrapper->program_data(addr, blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin, size);
     }
 
     // start application
