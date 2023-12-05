@@ -101,7 +101,7 @@ namespace BSL {
     * from MSPM0 BSL example
     */
     #define CRC32_POLY 0xEDB88320
-    inline uint32_t softwareCRC(const uint8_t *data, uint8_t length)
+    inline uint32_t softwareCRC(const uint8_t *data, uint32_t length)
     {
         uint32_t ii, jj, byte, crc, mask;
         ;
@@ -151,7 +151,7 @@ namespace BSL {
     {
         switch(msg) {
         case CoreMessage::SUCCESS:
-
+            return "Success";
         case CoreMessage::BSL_LOCKED:
             return "BSL is not yet unlocked with Bootloader unlock password command or After BSL unlock";
         case CoreMessage::BSL_PWD_ERR:

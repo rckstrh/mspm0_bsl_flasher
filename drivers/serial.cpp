@@ -1,6 +1,6 @@
 #include "serial.h"
 
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 Serial::Serial(const char* __file) : port(__file)
 {

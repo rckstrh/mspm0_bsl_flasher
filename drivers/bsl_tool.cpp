@@ -73,37 +73,6 @@ BSLTool::BSLTool()
             return;
         }
     }
-    //sleep(1);
-
-    // read back program
-    /*
-    {
-        constexpr uint32_t read_len = 4;
-        constexpr uint32_t addr = 0x00;
-        printf(">> Reading some memory @0x%08x, size=%d\n", addr, read_len);
-        uint8_t mem_data[read_len];
-        const auto [ack, msg] = uart_wrapper->readback_data(addr, read_len, mem_data);
-        printf("<< %s\n", BSL::AckTypeToString(ack));
-
-        if(ack != BSL::AckType::BSL_ACK) {
-            printf("<< %s\n", BSL::AckTypeToString(ack));
-            printf("Read data. Stopping...\n");
-            return;
-        }
-    }
-    */
-
-    /*
-    // verify/standalone CRC some block for debugging
-    {
-        constexpr uint32_t block_size = 1024;
-        constexpr uint32_t addr = 0x00;
-        printf(">> Standalone verification @0x%08x, size=%dbytes\n", addr, block_size);
-        const auto [ack, msg, crc] = uart_wrapper->verify(addr, block_size);
-        printf("<< %s\n", BSL::AckTypeToString(ack));
-
-    }
-    */
 
     // mass erase, program data may be faulty otherwise
     {
@@ -111,14 +80,29 @@ BSLTool::BSLTool()
         const auto [ack, msg] = uart_wrapper->mass_erase();
         printf("<< %s\n", BSL::AckTypeToString(ack));
     }
-    
 
-    // write 8 testbytes at specified test location in blinky
+    // write blinky
     {
         constexpr uint32_t addr =  0x0;
         uint32_t size =  blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin_len;
         printf(">> Program data @0x%08x, size=%d bytes\n", addr, size);
         const auto [ack, msg] = uart_wrapper->program_data(addr, blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin, size);
+        printf("<< ACK: %s MSG: %s\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg));
+    }
+
+    // verify/standalone CRC blinky
+    {
+        const uint32_t block_size = 1024;
+        constexpr uint32_t addr = 0x00;
+        printf(">> Standalone verification @0x%08x, size=%dbytes\n", addr, block_size);
+        const auto [ack, msg, crc] = uart_wrapper->verify(addr, block_size);
+        printf("<< ACK: %s MSG: %s CRC: 0x%08x\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg), crc);
+
+        // do CRC over input image
+        uint8_t *prog_data = blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin;
+        uint32_t prog_size = 1024;
+        auto prog_crc = BSL::softwareCRC(prog_data, prog_size);
+        printf("Prog CRC: 0x%08x\n", prog_crc);
     }
 
     // start application

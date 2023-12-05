@@ -286,26 +286,31 @@ std::tuple<BSL::AckType, BSL::CoreMessage, uint32_t> BSL_UART::verify(const uint
     ack = receive_ack(serial);
 
 
-    // receive core message
+    // receive and check if standalone msg or core message
     constexpr uint16_t resp_data_len = 0x05;
     constexpr uint16_t rx_buffer_len = header_len+resp_data_len+crc_len;
     uint8_t rx_buf[rx_buffer_len] = {0};
     int bytes_read = 0;
 
-    bytes_read = serial->readBytes((char*) rx_buf, rx_buffer_len);
-    if(bytes_read != rx_buffer_len)
+    bytes_read = serial->readBytes((char*) rx_buf, header_len+2);
+    if(bytes_read != header_len+2)
         return {BSL::AckType::ERR_TIMEOUT, msg, mem_block_crc};
 
     uint8_t* resp_code = rx_buf+header_len;
     if(static_cast<BSL::CoreResponse>(*resp_code) != BSL::CoreResponse::StandaloneVerification)
-        return {ack, static_cast<BSL::CoreMessage>(*resp_code+1), 0};
+        return {ack, static_cast<BSL::CoreMessage>(*(resp_code+1)), 0};
+
+    // read rest of standalone response
+    bytes_read += serial->readBytes((char*) rx_buf, rx_buffer_len-bytes_read);
+    if(bytes_read != rx_buffer_len)
+        return {BSL::AckType::ERR_TIMEOUT, msg, mem_block_crc};
 
     uint8_t* resp_data = resp_code+1;
 
-    mem_block_crc = *((uint32_t*)resp_data);
+    mem_block_crc = *((uint32_t*) resp_data);
 
 
-    return {ack, msg, mem_block_crc};
+    return {ack, BSL::CoreMessage::SUCCESS, mem_block_crc};
 }
 
 std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::program_data(const uint32_t addr, const uint8_t* program_data, size_t program_size)
