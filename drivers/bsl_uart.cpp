@@ -270,13 +270,13 @@ std::tuple<BSL::AckType, BSL::CoreMessage, uint32_t> BSL_UART::verify(const uint
     constexpr uint8_t tx_buffer_len = header_len+crc_len+tx_data_len;
     uint8_t tx_buf[tx_buffer_len] = {0};
 
-    uint8_t cmd_data[8];
-    *((uint32_t*) cmd_data) = addr;
-    *((uint32_t*) cmd_data+1) = size;
+    uint32_t cmd_data[2];
+    cmd_data[0] = addr;
+    cmd_data[1] = size;
 
     // wrap packet
     fill_cmd_header(tx_buf, tx_data_len, BSL::CoreCmd::StandaloneVerification);
-    fill_cmd_data(tx_buf, cmd_data, 8);
+    fill_cmd_data(tx_buf, (uint8_t*) cmd_data, 8);
     auto crc = BSL::softwareCRC(tx_buf+header_len, tx_data_len);
     // append crc
     *((uint32_t*) (tx_buf+header_len+tx_data_len)) = crc;
@@ -301,7 +301,7 @@ std::tuple<BSL::AckType, BSL::CoreMessage, uint32_t> BSL_UART::verify(const uint
         return {ack, static_cast<BSL::CoreMessage>(*(resp_code+1)), 0};
 
     // read rest of standalone response
-    bytes_read += serial->readBytes((char*) rx_buf, rx_buffer_len-bytes_read);
+    bytes_read += serial->readBytes((char*) rx_buf+bytes_read, rx_buffer_len-bytes_read);
     if(bytes_read != rx_buffer_len)
         return {BSL::AckType::ERR_TIMEOUT, msg, mem_block_crc};
 
