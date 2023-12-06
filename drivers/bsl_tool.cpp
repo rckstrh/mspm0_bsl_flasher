@@ -6,7 +6,6 @@
  */
 
 #include "bsl_tool.h"
-#include "testprog.h"
 #include <chrono>
 #include <thread>
 
@@ -24,7 +23,6 @@ BSLTool::~BSLTool()
     
 };
 
-// returns connection status
 bool BSLTool::connect(bool force)
 {
     if(!force && isConnected) {
@@ -58,7 +56,6 @@ bool BSLTool::change_baud(BSL::Baudrate baud)
 }
 
 bool BSLTool::get_device_info()
-// get device info
 {
     printf(">> Getting device info\n");
     const auto [ack, device_info] = uart_wrapper->get_device_info();
