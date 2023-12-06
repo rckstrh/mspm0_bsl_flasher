@@ -11,113 +11,272 @@
 #include <thread>
 
 
-BSLTool::BSLTool()
+BSLTool::BSLTool(const char* serial_port)
 {
-    uart_wrapper = new BSL_UART("/dev/ttyACM0");
-
-    // connect
-    {
-        printf(">> Connecting\n");
-        auto resp = uart_wrapper->connect();
-        printf("<< %s\n", BSL::AckTypeToString(resp));
-        if(resp != BSL::AckType::BSL_ACK) {
-            printf("Could not connect. Stopping...\n");
-            return;
-        }
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    // change baud in BSL
-    {
-        printf(">> Changing baudrate to 115200\n");
-        auto resp = uart_wrapper->change_baudrate(BSL::Baudrate::BSL_B115200);
-        printf("<< %s\n", BSL::AckTypeToString(resp));
-        if(resp != BSL::AckType::BSL_ACK) {
-            printf("Could not change baudrate. Stopping...\n");
-            //return;
-        }
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    
-
-    // get device info
-    {
-        printf(">> Getting device info\n");
-        const auto [ack, device_info] = uart_wrapper->get_device_info();
-        printf("<< %s\n", BSL::AckTypeToString(ack));
-        if(ack != BSL::AckType::BSL_ACK) {
-            printf("Could not get device info. Stopping...\n");
-            return;
-        }
-
-        printf("<< Device Info: \n");
-        printf("\tCommand interpreter version: 0x%x\n", device_info.cmd_interpreter_version);
-        printf("\tBuild ID: 0x%x\n", device_info.build_id);
-        printf("\tApplication version: 0x%x\n", device_info.app_version);
-        printf("\tPlug-In interface version: 0x%x\n", device_info.plugin_if_version);
-        printf("\tBSL max buffer size: 0x%x\n", device_info.bsl_max_buff_size);
-        printf("\tBSL start address: 0x%x\n", device_info.bsl_buff_start_addr);
-        printf("\tBCR conf ID: 0x%x\n", device_info.bcr_conf_id);
-        printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    // unlock bootloader
-    {
-        printf(">> Unlocking bootloader\n");
-        const auto [ack, msg] = uart_wrapper->unlock_bootloader();
-        printf("<< %s\n", BSL::AckTypeToString(ack));
-
-        if(ack != BSL::AckType::BSL_ACK) {
-            printf("Could not unlock bootloader. Please check configured password. Stopping...\n");
-            return;
-        }
-    }
-
-    // mass erase, program data may be faulty otherwise
-    {
-        printf(">> Mass erase before programming\n");
-        const auto [ack, msg] = uart_wrapper->mass_erase();
-        printf("<< %s\n", BSL::AckTypeToString(ack));
-    }
-
-    
-    // write blinky
-    {
-        constexpr uint32_t addr =  0x0;
-        uint32_t size =  blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin_len;
-        printf(">> Program data @0x%08x, size=%d bytes\n", addr, size);
-        const auto [ack, msg] = uart_wrapper->program_data(addr, blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin, size);
-        printf("<< ACK: %s MSG: %s\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg));
-    }
-    
-
-    // verify/standalone CRC blinky
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        const uint32_t block_size = blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin_len-8;
-        constexpr uint32_t addr = 0x8;
-        printf(">> Standalone verification @0x%08x, size=%dbytes\n", addr, block_size);
-        const auto [ack, msg, crc] = uart_wrapper->verify(addr, block_size);
-        printf("<< ACK: %s MSG: %s CRC: 0x%08x\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg), crc);
-
-        // do CRC over input image
-        uint8_t *prog_data = blinky_workspace_v12_blink_led_LP_MSPM0G3507_freertos_ticlang_Debug_blink_led_LP_MSPM0G3507_freertos_ticlang_bin;
-        uint32_t prog_size = 1024;
-        auto prog_crc = BSL::softwareCRC(prog_data+addr, block_size);
-        printf("Prog CRC: 0x%08x\n", prog_crc);
-    }
-
-    // start application
-    {
-        printf(">> Starting application\n");
-        auto resp = uart_wrapper->start_application();
-        printf("<< %s\n", BSL::AckTypeToString(resp));
-    }
+    uart_wrapper = new BSL_UART(serial_port);
 };
 
 BSLTool::~BSLTool() 
 {
     if(uart_wrapper != nullptr)
         delete uart_wrapper;
+
+    
 };
+
+// returns connection status
+bool BSLTool::connect(bool force)
+{
+    if(!force && isConnected) {
+        printf("Already connected.");
+        return isConnected;
+    }
+
+    printf(">> Connecting\n");
+    auto resp = uart_wrapper->connect();
+    printf("<< %s\n", BSL::AckTypeToString(resp));
+    if(resp != BSL::AckType::BSL_ACK) {
+        printf("Could not connect. Stopping...\n");
+        isConnected = false;
+        return isConnected;
+    }
+
+    isConnected = true;
+    return isConnected;
+}
+
+bool BSLTool::change_baud(BSL::Baudrate baud)
+{
+    printf(">> Changing baudrate to 115200\n");
+    auto resp = uart_wrapper->change_baudrate(baud);
+    printf("<< %s\n", BSL::AckTypeToString(resp));
+    if(resp != BSL::AckType::BSL_ACK) {
+        printf("Could not change baudrate. Stopping...\n");
+        return false;
+    }
+    return true;
+}
+
+bool BSLTool::get_device_info()
+// get device info
+{
+    printf(">> Getting device info\n");
+    const auto [ack, device_info] = uart_wrapper->get_device_info();
+    printf("<< %s\n", BSL::AckTypeToString(ack));
+    if(ack != BSL::AckType::BSL_ACK) {
+        printf("Could not get device info. Stopping...\n");
+        return false;
+    }
+
+    printf("<< Device Info: \n");
+    printf("\tCommand interpreter version: 0x%x\n", device_info.cmd_interpreter_version);
+    printf("\tBuild ID: 0x%x\n", device_info.build_id);
+    printf("\tApplication version: 0x%x\n", device_info.app_version);
+    printf("\tPlug-In interface version: 0x%x\n", device_info.plugin_if_version);
+    printf("\tBSL max buffer size: 0x%x\n", device_info.bsl_max_buff_size);
+    printf("\tBSL start address: 0x%x\n", device_info.bsl_buff_start_addr);
+    printf("\tBCR conf ID: 0x%x\n", device_info.bcr_conf_id);
+    printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
+
+    return true;
+}
+
+bool BSLTool::unlock()
+{
+    printf(">> Unlocking bootloader\n");
+    const auto [ack, msg] = uart_wrapper->unlock_bootloader();
+    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(ack != BSL::AckType::BSL_ACK) {
+        printf("Could not unlock bootloader. Please check configured password. Stopping...\n");
+        isUnlocked = false;
+        return isUnlocked;
+    }
+
+    isUnlocked = true;
+    return isUnlocked;
+}
+
+bool BSLTool::mass_erase()
+{
+    printf(">> Mass erase before programming\n");
+    const auto [ack, msg] = uart_wrapper->mass_erase();
+    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(ack != BSL::AckType::BSL_ACK) {
+        printf("Could not mass erase flash. Stopping...\n");
+        isErased = false;
+        return isErased;
+    }
+
+    isErased = true;
+    return isErased;
+}
+
+bool BSLTool::program_data(uint8_t* data, uint32_t load_addr, uint32_t size)
+{
+    printf(">> Program data @0x%08x, size=%d bytes\n", load_addr, size);
+    const auto [ack, msg] = uart_wrapper->program_data(load_addr, data, size);
+    printf("<< ACK: %s MSG: %s\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg));
+
+    if((ack != BSL::AckType::BSL_ACK) || (msg != BSL::CoreMessage::SUCCESS)) {
+        printf("Could not program. Stopping...\n");
+        isProgrammed = false;
+        return isProgrammed;
+    }
+
+    isProgrammed = true;
+    return isProgrammed;
+}
+
+bool BSLTool::verify(uint8_t *data, uint32_t load_addr, uint32_t size, uint32_t offset)
+{
+    
+    const uint32_t block_size = size-offset;
+    const uint32_t addr = load_addr+offset;
+    printf(">> Standalone verification @0x%08x, size=%dbytes\n", addr, block_size);
+    const auto [ack, msg, mcu_crc] = uart_wrapper->verify(addr, block_size);
+    printf("<< ACK: %s MSG: %s MCU_CRC: 0x%08x\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg), mcu_crc);
+
+    if(ack != BSL::AckType::BSL_ACK) {
+        printf("Could not receive verification response. Stopping...\n");
+        isVerified = false;
+        return isVerified;
+    }
+
+    // do CRC over input image
+    uint32_t prog_size = block_size;
+    auto prog_crc = BSL::softwareCRC(data+offset, block_size);
+    printf("Prog CRC: 0x%08x\n", prog_crc);
+
+    if(prog_crc != mcu_crc) {
+        printf("CRC mismatch\n");
+        isVerified = false;
+        return isVerified;
+    }
+
+    printf("Verified programmed data\n");
+
+    isVerified = true;
+    return isVerified;
+}
+
+bool BSLTool::start_application()
+{
+    printf(">> Starting application\n");
+    auto ack = uart_wrapper->start_application();
+    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(ack != BSL::AckType::BSL_ACK) {
+        printf("Could not start application. Stopping...\n");
+        isStarted = false;
+        return isStarted;
+    }
+
+    isStarted = true;
+    return isStarted;
+}
+
+bool BSLTool::open_file(const char* path, uint32_t &size)
+{
+    close_file();
+
+    input_file_handle = fopen(path, "rb");
+    if(input_file_handle == nullptr) {
+        printf("Read file: Can not open file %s\n", path);
+        return false;
+    }
+
+    fseek(input_file_handle, 0L, SEEK_END);
+    size = ftell(input_file_handle);
+    fseek(input_file_handle, 0L, SEEK_SET);
+
+    return true;
+}
+
+bool BSLTool::close_file()
+{
+    if(input_file_handle) {
+        if(!fclose(input_file_handle))
+            return false;
+    }
+    return true;
+}
+
+uint32_t BSLTool::read_file(uint8_t *dst, uint32_t size)
+{
+    uint32_t bytes_read = 0;
+    bytes_read = fread(dst, size, 1, input_file_handle);
+    return bytes_read;
+}
+
+bool BSLTool::flash_image(const char* filepath)
+{
+    bool status = false;
+
+    status = connect();
+    if(!status) {
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    status = change_baud(BSL::Baudrate::BSL_B115200); 
+    if(!status) {
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    status = get_device_info();
+    if(!status) {
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    status = unlock();
+    if(!status) {
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    status = mass_erase();
+    if(!status) {
+        return false;
+    }
+
+    uint32_t size = 0;
+    status = open_file(filepath, size);
+    if(!status) {
+        printf("Error opening file %s\n", filepath);
+        return false;
+    }
+
+    uint8_t data[size] = {0};
+    status = read_file(data, size);
+    if(!status) {
+        printf("Error reading file %s\n", filepath);
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    status = program_data(data, 0x0, size);
+    if(!status) {
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    status = verify(data, 0x0, size);
+    if(!status) {
+        return false;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    status = start_application();
+    if(!status) {
+        return false;
+    }
+
+    // debug print flag summary
+    printf("\n\nStatus:\n\tProgrammed: %d\n\tVerified: %d\n\tStarted: %d\n", isProgrammed, isVerified, isStarted);
+
+    return true;
+}

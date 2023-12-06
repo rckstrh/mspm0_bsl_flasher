@@ -12,7 +12,7 @@ class BSL_UART {
     public:
         BSL_UART(const char* _serial_port);
         ~BSL_UART();
-
+        bool open_serial();
         BSL::AckType connect();
         std::tuple<BSL::AckType, BSL::_device_info> get_device_info();
         BSL::AckType start_application();

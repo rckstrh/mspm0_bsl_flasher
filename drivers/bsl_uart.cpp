@@ -16,7 +16,9 @@ BSL::AckType receive_ack(Serial* serial);
 BSL_UART::BSL_UART(const char* _serial_port)
 {
     serial = new Serial(_serial_port);
-    serial->_open();
+    if(!serial->_open()) {
+       throw std::runtime_error("Failed to open serial port");
+    }
 }
 
 BSL_UART::~BSL_UART() 
@@ -331,16 +333,21 @@ std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::program_data(const uint32_t
 
     // for now only handle data that is smaller than bsl max buffer size
     // let segmentation happen outside this function, maybe move it in here after that works
+    // => actually do not know if this is true when we only send 128byte payloads anyway, so try without
+    /*
     if(program_size > bsl_max_buff_size) {
         printf("program_data size > bsl_max_buffer_size. Canceling.\n");
         return {ack, msg};
     }
+    */
 
     uint32_t bytes_to_write = program_size;
     uint32_t bytes_written = 0;
     uint16_t data_block_size = 0;
+    uint32_t block_count = 0;
+
     while(bytes_to_write > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
         if (bytes_to_write >= MAX_PAYLOAD_SIZE)
             data_block_size = MAX_PAYLOAD_SIZE;
         else
@@ -367,10 +374,18 @@ std::tuple<BSL::AckType, BSL::CoreMessage> BSL_UART::program_data(const uint32_t
 
         // write and get ack
         write_buffer(serial, tx_buf, tx_buffer_len);
-        ack = receive_ack(serial);    
+        ack = receive_ack(serial);   
 
         msg = receive_core_message();
+
+        //return immediately if block was written unsuccessfully
+        if((ack != BSL::AckType::BSL_ACK) || (msg != BSL::CoreMessage::SUCCESS)) {
+            printf("Programming failed at block %d, addr 0x%08x\n", block_count, addr+bytes_written);
+            return {ack, msg};
+        }
+
         bytes_written += data_block_size;
+        block_count++;
     }
 
 
