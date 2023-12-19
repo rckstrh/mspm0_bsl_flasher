@@ -10,18 +10,28 @@
 #include <thread>
 
 
-BSLTool::BSLTool(const char* serial_port)
+BSLTool::BSLTool(const char* serial_port, bool use_gpio)
 {
     uart_wrapper = new BSL_UART(serial_port);
+    if(use_gpio) {
+        gpio_wrapper = new BSL_GPIO();
+    }
 };
 
 BSLTool::~BSLTool() 
 {
     if(uart_wrapper != nullptr)
         delete uart_wrapper;
-
-    
 };
+
+bool BSLTool::enter_bsl()
+{
+    if(gpio_wrapper != nullptr) {
+        return gpio_wrapper->enter_bsl();
+    } else {
+        return false;
+    }
+}
 
 bool BSLTool::connect(bool force)
 {

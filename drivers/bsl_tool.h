@@ -6,13 +6,19 @@
  */
 
 #include <string>
-#include <vector>
+//#include <vector>
 #include "bsl_uart.h"
+#include "bsl_gpio.h"
 
 class BSLTool {
     public:
-        BSLTool(const char* serial_port);
+        BSLTool(const char* serial_port, bool use_gpio);
         ~BSLTool();
+
+        // GPIO
+        bool enter_bsl();
+
+        // UART
         bool connect(bool force = false);
         bool change_baud(BSL::Baudrate baud);
         bool get_device_info();
@@ -30,6 +36,7 @@ class BSLTool {
     private:
         BSL_UART* uart_wrapper = nullptr;
         FILE* input_file_handle = nullptr;
+        BSL_GPIO* gpio_wrapper = nullptr;
 
         bool isConnected = false;
         bool isUnlocked = false;
