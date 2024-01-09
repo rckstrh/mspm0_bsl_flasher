@@ -14,7 +14,7 @@
 
 class Serial {
     public:
-        Serial(const char* __file);
+        Serial(const char* __file, int _verbose_level=0);
         ~Serial();
         bool _open(speed_t __speed = B9600);
         int _close();
@@ -27,4 +27,6 @@ class Serial {
         const char* port;
         int serial_port;
         struct termios tty;
+
+        int verbose_level = 0;
 };

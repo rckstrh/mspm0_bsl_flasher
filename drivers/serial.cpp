@@ -1,8 +1,6 @@
 #include "serial.h"
 
-#define DEBUG_PRINT
-
-Serial::Serial(const char* __file) : port(__file)
+Serial::Serial(const char* __file, int _verbose_level) : port(__file), verbose_level(_verbose_level)
 {
     
 }
@@ -84,13 +82,15 @@ int Serial::writeBytes(const char buff[], size_t buf_size)
     if (serial_port < 0)
         return -1;
 
-#ifdef DEBUG_PRINT
-    printf("Serial write %ld bytes: ", buf_size);
-    for(int i=0; i < buf_size; i++) {
-        printf("%02x ", (unsigned char) buff[i]);
+    // debug printfs
+    if(verbose_level > 2) {
+        printf("Serial write %ld bytes: ", buf_size);
+        for(int i=0; i < buf_size; i++) {
+            printf("%02x ", (unsigned char) buff[i]);
+        }
+        printf("\n");
     }
-    printf("\n");
-#endif 
+
 
     int n = write(serial_port, buff, buf_size);
     return n;
@@ -118,13 +118,14 @@ int Serial::readBytes(char buff[], size_t buf_size, int _max_timeout_tries)
         }
     }
 
-#ifdef DEBUG_PRINT
-    printf("Serial read %d bytes: ", bytes_read);
-    for(int i=0; i < bytes_read; i++) {
-        printf("%02x ", (unsigned char) buff[i]);
+    // debug printfs
+    if(verbose_level > 2) {
+        printf("Serial read %d bytes: ", bytes_read);
+        for(int i=0; i < bytes_read; i++) {
+            printf("%02x ", (unsigned char) buff[i]);
+        }
+        printf("\n");
     }
-    printf("\n");
-#endif
 
     return bytes_read;
 }

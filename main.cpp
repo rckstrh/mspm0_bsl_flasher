@@ -104,7 +104,7 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
         auto b = BSLTool(serial_path, enter_bsl_gpio);
         b.open_file(file_path, size);
         std::string fw_version = b.read_file_version();
-        printf("Using serial %s to flash %s\nFirmware version:%s\n", serial_path, file_path, fw_version.c_str());
+        printf("Using serial %s to flash %s\nFirmware version:%s\n\n", serial_path, file_path, fw_version.c_str());
 
         if(enter_bsl_gpio) {
             printf("Entering BSL mode\n");

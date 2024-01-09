@@ -12,7 +12,7 @@
 
 class BSLTool {
     public:
-        BSLTool(const char* serial_port, bool use_gpio);
+        BSLTool(const char* serial_port, bool use_gpio, int _verbose_level=0);
         ~BSLTool();
 
         // GPIO
@@ -45,4 +45,6 @@ class BSLTool {
         bool isProgrammed = false;
         bool isVerified = false;
         bool isStarted = false;
+
+        int verbose_level = 0;
 };

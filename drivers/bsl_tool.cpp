@@ -10,11 +10,11 @@
 #include <thread>
 
 
-BSLTool::BSLTool(const char* serial_port, bool use_gpio)
+BSLTool::BSLTool(const char* serial_port, bool use_gpio, int _verbose_level) : verbose_level(_verbose_level)
 {
-    uart_wrapper = new BSL_UART(serial_port);
+    uart_wrapper = new BSL_UART(serial_port, verbose_level);
     if(use_gpio) {
-        gpio_wrapper = new BSL_GPIO();
+        gpio_wrapper = new BSL_GPIO(verbose_level);
     }
 };
 
@@ -42,7 +42,11 @@ bool BSLTool::connect(bool force)
 
     printf(">> Connecting\n");
     auto resp = uart_wrapper->connect();
-    printf("<< %s\n", BSL::AckTypeToString(resp));
+
+    if(verbose_level > 1) {
+        printf("<< %s\n", BSL::AckTypeToString(resp));
+    }
+
     if(resp != BSL::AckType::BSL_ACK) {
         printf("Could not connect. Stopping...\n");
         isConnected = false;
@@ -57,7 +61,11 @@ bool BSLTool::change_baud(BSL::Baudrate baud)
 {
     printf(">> Changing baudrate to 115200\n");
     auto resp = uart_wrapper->change_baudrate(baud);
-    printf("<< %s\n", BSL::AckTypeToString(resp));
+
+    if(verbose_level > 1) {
+        printf("<< %s\n", BSL::AckTypeToString(resp));
+    }
+
     if(resp != BSL::AckType::BSL_ACK) {
         printf("Could not change baudrate. Stopping...\n");
         return false;
@@ -69,21 +77,27 @@ bool BSLTool::get_device_info()
 {
     printf(">> Getting device info\n");
     const auto [ack, device_info] = uart_wrapper->get_device_info();
-    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(verbose_level > 1) {
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+    }
+
     if(ack != BSL::AckType::BSL_ACK) {
         printf("Could not get device info. Stopping...\n");
         return false;
     }
 
-    printf("<< Device Info: \n");
-    printf("\tCommand interpreter version: 0x%x\n", device_info.cmd_interpreter_version);
-    printf("\tBuild ID: 0x%x\n", device_info.build_id);
-    printf("\tApplication version: 0x%x\n", device_info.app_version);
-    printf("\tPlug-In interface version: 0x%x\n", device_info.plugin_if_version);
-    printf("\tBSL max buffer size: 0x%x\n", device_info.bsl_max_buff_size);
-    printf("\tBSL start address: 0x%x\n", device_info.bsl_buff_start_addr);
-    printf("\tBCR conf ID: 0x%x\n", device_info.bcr_conf_id);
-    printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
+    if(verbose_level > 0) {
+        printf("<< Device Info: \n");
+        printf("\tCommand interpreter version: 0x%x\n", device_info.cmd_interpreter_version);
+        printf("\tBuild ID: 0x%x\n", device_info.build_id);
+        printf("\tApplication version: 0x%x\n", device_info.app_version);
+        printf("\tPlug-In interface version: 0x%x\n", device_info.plugin_if_version);
+        printf("\tBSL max buffer size: 0x%x\n", device_info.bsl_max_buff_size);
+        printf("\tBSL start address: 0x%x\n", device_info.bsl_buff_start_addr);
+        printf("\tBCR conf ID: 0x%x\n", device_info.bcr_conf_id);
+        printf("\tBSL conf ID: 0x%x\n", device_info.bsl_conf_id);
+    }
 
     return true;
 }
@@ -92,7 +106,10 @@ bool BSLTool::unlock()
 {
     printf(">> Unlocking bootloader\n");
     const auto [ack, msg] = uart_wrapper->unlock_bootloader();
-    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(verbose_level > 1) {
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+    }
 
     if(ack != BSL::AckType::BSL_ACK) {
         printf("Could not unlock bootloader. Please check configured password. Stopping...\n");
@@ -108,7 +125,10 @@ bool BSLTool::mass_erase()
 {
     printf(">> Mass erase before programming\n");
     const auto [ack, msg] = uart_wrapper->mass_erase();
-    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(verbose_level > 1) {
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+    }
 
     if(ack != BSL::AckType::BSL_ACK) {
         printf("Could not mass erase flash. Stopping...\n");
@@ -124,7 +144,10 @@ bool BSLTool::program_data(uint8_t* data, uint32_t load_addr, uint32_t size)
 {
     printf(">> Program data @0x%08x, size=%d bytes\n", load_addr, size);
     const auto [ack, msg] = uart_wrapper->program_data(load_addr, data, size);
-    printf("<< ACK: %s MSG: %s\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg));
+
+    if(verbose_level > 1) {
+        printf("<< ACK: %s MSG: %s\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg));
+    }
 
     if((ack != BSL::AckType::BSL_ACK) || (msg != BSL::CoreMessage::SUCCESS)) {
         printf("Could not program. Stopping...\n");
@@ -141,9 +164,17 @@ bool BSLTool::verify(uint8_t *data, uint32_t load_addr, uint32_t size, uint32_t 
     
     const uint32_t block_size = size-offset;
     const uint32_t addr = load_addr+offset;
-    printf(">> Standalone verification @0x%08x, size=%dbytes\n", addr, block_size);
+    printf(">> Standalone verification");
+    if(verbose_level > 1) {
+        printf(" @0x%08x, size=%dbytes", addr, block_size);
+    }
+    printf("\n");
+
     const auto [ack, msg, mcu_crc] = uart_wrapper->verify(addr, block_size);
-    printf("<< ACK: %s MSG: %s MCU_CRC: 0x%08x\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg), mcu_crc);
+
+    if(verbose_level > 1) {
+        printf("<< ACK: %s MSG: %s MCU_CRC: 0x%08x\n", BSL::AckTypeToString(ack), BSL::CoreMessageToString(msg), mcu_crc);
+    }
 
     if(ack != BSL::AckType::BSL_ACK) {
         printf("Could not receive verification response. Stopping...\n");
@@ -154,7 +185,9 @@ bool BSLTool::verify(uint8_t *data, uint32_t load_addr, uint32_t size, uint32_t 
     // do CRC over input image
     uint32_t prog_size = block_size;
     auto prog_crc = BSL::softwareCRC(data+offset, block_size);
-    printf("Prog CRC: 0x%08x\n", prog_crc);
+    if(verbose_level > 2) {
+        printf("Prog CRC: 0x%08x\n", prog_crc);
+    }
 
     if(prog_crc != mcu_crc) {
         printf("CRC mismatch\n");
@@ -162,7 +195,7 @@ bool BSLTool::verify(uint8_t *data, uint32_t load_addr, uint32_t size, uint32_t 
         return isVerified;
     }
 
-    printf("Verified programmed data\n");
+    printf(">> Verified programmed data\n");
 
     isVerified = true;
     return isVerified;
@@ -172,7 +205,10 @@ bool BSLTool::start_application()
 {
     printf(">> Starting application\n");
     auto ack = uart_wrapper->start_application();
-    printf("<< %s\n", BSL::AckTypeToString(ack));
+
+    if(verbose_level > 1) {
+        printf("<< %s\n", BSL::AckTypeToString(ack));
+    }
 
     if(ack != BSL::AckType::BSL_ACK) {
         printf("Could not start application. Stopping...\n");
@@ -304,7 +340,7 @@ bool BSLTool::flash_image(const char* filepath)
     }
 
     // debug print flag summary
-    printf("\n\nStatus:\n\tProgrammed: %d\n\tVerified: %d\n\tStarted: %d\n", isProgrammed, isVerified, isStarted);
+    printf("\nStatus:\n\tProgrammed: %d\n\tVerified: %d\n\tStarted: %d\n", isProgrammed, isVerified, isStarted);
 
     return true;
 }

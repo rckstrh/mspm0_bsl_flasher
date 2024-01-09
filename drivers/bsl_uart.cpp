@@ -13,9 +13,9 @@ void fill_cmd_data(uint8_t *buffer, uint8_t *data, size_t data_len);
 void write_buffer(Serial* serial, const uint8_t* buffer, size_t buffer_len);
 BSL::AckType receive_ack(Serial* serial);
 
-BSL_UART::BSL_UART(const char* _serial_port)
+BSL_UART::BSL_UART(const char* _serial_port, int _verbose_level) : verbose_level(_verbose_level)
 {
-    serial = new Serial(_serial_port);
+    serial = new Serial(_serial_port, verbose_level);
     if(!serial->_open()) {
        throw std::runtime_error("Failed to open serial port");
     }

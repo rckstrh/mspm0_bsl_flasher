@@ -10,7 +10,7 @@
 #include <thread>
 #include <iostream>
 
-BSL_GPIO::BSL_GPIO(_gpio_def _bsl, _gpio_def _reset) : bsl_out(_bsl), reset_out(_reset)
+BSL_GPIO::BSL_GPIO(int _verbose_level, _gpio_def _bsl, _gpio_def _reset) : verbose_level(_verbose_level), bsl_out(_bsl), reset_out(_reset)
 {
 
 }
@@ -65,7 +65,12 @@ bool BSL_GPIO::set_pin(_gpio_def gpio, bool level)
     if((size == -1) || (!cmd)) {
         return false;
     }
-    printf("%s\n", cmd);    // debug
+
+    // debug printfs
+    if(verbose_level > 2) {
+        printf("%s\n", cmd);
+    }
+    
     int status = system(cmd);
     free(cmd);
 

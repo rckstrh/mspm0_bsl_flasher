@@ -10,7 +10,7 @@
 
 class BSL_UART {
     public:
-        BSL_UART(const char* _serial_port);
+        BSL_UART(const char* _serial_port, int _verbose_level=0);
         ~BSL_UART();
         bool open_serial();
         BSL::AckType connect();
@@ -46,4 +46,6 @@ class BSL_UART {
         };
 
         uint32_t bsl_max_buff_size = 0;
+
+        int verbose_level = 0;
 };
