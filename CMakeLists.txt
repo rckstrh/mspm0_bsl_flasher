@@ -7,7 +7,12 @@ enable_testing()
 include_directories(drivers)
 include_directories(prog)
 
+find_package( Boost REQUIRED COMPONENTS program_options regex )
+include_directories( ${Boost_INCLUDE_DIRS} )
+
 add_executable(MSPM0_bsl_flasher main.cpp drivers/bsl_tool.cpp drivers/serial.cpp drivers/bsl_uart.cpp drivers/bsl_gpio.cpp)
+
+target_link_libraries(MSPM0_bsl_flasher Boost::program_options Boost::regex)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
