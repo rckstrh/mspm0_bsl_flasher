@@ -28,10 +28,11 @@ class BSLTool {
         bool verify(uint8_t *data, uint32_t load_addr, uint32_t size, uint32_t offset=0x8);
         bool start_application();
 
-        //bool read_file(const char* path, std::vector<uint8_t> &buffer);
         bool open_file(const char* path, uint32_t &size);
         uint32_t read_file(uint8_t *dst, uint32_t size);
         bool close_file();
+        std::string read_file_version(uint32_t offset=0x000000c0, uint32_t fw_version_len=51);
+
         bool flash_image(const char* filepath);
     private:
         BSL_UART* uart_wrapper = nullptr;

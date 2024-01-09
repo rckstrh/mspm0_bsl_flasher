@@ -33,6 +33,7 @@ bool BSL_GPIO::hard_reset(uint16_t ms_reset_time)
 
     return status;
 }
+
 bool BSL_GPIO::enter_bsl()
 {
     bool status = set_pin(bsl_out, true);

@@ -217,6 +217,27 @@ uint32_t BSLTool::read_file(uint8_t *dst, uint32_t size)
     return bytes_read;
 }
 
+std::string BSLTool::read_file_version(uint32_t offset, uint32_t fw_version_len)
+{
+    if(input_file_handle == nullptr) {
+        printf("Open file first!\n");
+        return "";
+    }  
+
+    uint32_t bytes_read = 0;
+    char fw_version[fw_version_len] = "";
+
+    fseek(input_file_handle, offset, SEEK_SET);
+    bytes_read = fread(fw_version, 1, fw_version_len, input_file_handle);
+
+    if(bytes_read != fw_version_len) {
+        printf("Error reading fw version\n");
+        return "";
+    }
+
+    return fw_version;
+}
+
 bool BSLTool::flash_image(const char* filepath)
 {
     bool status = false;
