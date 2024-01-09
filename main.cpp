@@ -75,6 +75,7 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
             ("serial-port,p", po::value<string>(), "serial port (e.g. /dev/ttyACM0)")
             ("firmware-file,i", po::value<string>(), "firmware file")
             ("enter-bsl", po::value<bool>()->default_value(true), "enter BSL mode via GPIOs (default: true)")
+            ("verbose", po::value<int>()->default_value(0), "verbosity level 0-3 (default: 0)")
         ;
 
         po::positional_options_description p;
@@ -96,12 +97,13 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
         }
 
         bool status;
+        int verbose_level = vm["verbose"].as<int>();
         bool enter_bsl_gpio = vm["enter-bsl"].as<bool>();
         const char* serial_path = vm["serial-port"].as<string>().c_str();
         const char* file_path = vm["firmware-file"].as<string>().c_str();
         uint32_t size = 0;
 
-        auto b = BSLTool(serial_path, enter_bsl_gpio);
+        auto b = BSLTool(serial_path, enter_bsl_gpio, verbose_level);
         b.open_file(file_path, size);
         std::string fw_version = b.read_file_version();
         printf("Using serial %s to flash %s\nFirmware version:%s\n\n", serial_path, file_path, fw_version.c_str());
