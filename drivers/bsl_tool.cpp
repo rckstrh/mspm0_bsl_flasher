@@ -12,7 +12,10 @@
 
 BSLTool::BSLTool(const char* serial_port, bool use_gpio, int _verbose_level) : verbose_level(_verbose_level)
 {
-    uart_wrapper = new BSL_UART(serial_port, verbose_level);
+    if(serial_port != nullptr) {
+        uart_wrapper = new BSL_UART(serial_port, verbose_level);
+    }
+
     if(use_gpio) {
         gpio_wrapper = new BSL_GPIO(verbose_level);
     }
