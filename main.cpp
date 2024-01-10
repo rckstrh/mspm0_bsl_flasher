@@ -6,6 +6,7 @@ namespace po = boost::program_options;
 using namespace std;
 
 void print_usage();
+void print_version();
 int flash(po::variables_map &vm, po::parsed_options &parsed);   // flash subcommand
 
 int main(int argc, char** argv) {
@@ -14,6 +15,7 @@ int main(int argc, char** argv) {
         po::options_description main_desc("Main options");
         main_desc.add_options()
             ("help,h", "produce help message")
+            ("version,v", "print version")
             ("command", po::value<string>(), "command (flash, reset, read_binary_version)")
             ("cmd-args", po::value<std::vector<std::string> >(), "arguments for command")
         ;
@@ -31,6 +33,12 @@ int main(int argc, char** argv) {
             run();
         po::store(parsed, vm);
         po::notify(vm);
+
+        // print version
+        if(vm.count("version")) {
+            print_version();
+            return 0;
+        }
 
         // handle subcommands
         if(vm.count("command")) {
@@ -135,4 +143,9 @@ void print_usage()
 {
     printf("Usage: MSPM0_bsl_flasher <cmd> <cmd args> [options]\n");
     printf("=> Example: MSPM0_bsl_flasher flash /dev/ttyACM0 /home/foo/bar.bin\n\n");
+}
+
+void print_version()
+{
+    printf("%s %s.%s.%s\n", _PROJECT_NAME_, _VERSION_MAJOR_, _VERSION_MINOR_, _VERSION_PATCH_);
 }
