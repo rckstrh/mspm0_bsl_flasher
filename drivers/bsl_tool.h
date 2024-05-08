@@ -33,7 +33,7 @@ class BSLTool {
         bool close_file();
         std::string read_file_version(uint32_t offset=0x000000c0, uint32_t fw_version_len=51);
 
-        bool flash_image(const char* filepath);
+        bool flash_image(const char* filepath, bool force);
     private:
         BSL_UART* uart_wrapper = nullptr;
         FILE* input_file_handle = nullptr;
