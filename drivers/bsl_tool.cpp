@@ -277,7 +277,7 @@ std::string BSLTool::read_file_version(uint32_t offset, uint32_t fw_version_len)
     return fw_version;
 }
 
-bool BSLTool::flash_image(const char* filepath)
+bool BSLTool::flash_image(const char* filepath, bool force)
 {
     bool status = false;
 
@@ -304,12 +304,6 @@ bool BSLTool::flash_image(const char* filepath)
         return false;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    status = mass_erase();
-    if(!status) {
-        return false;
-    }
-
     uint32_t size = 0;
     status = open_file(filepath, size);
     if(!status) {
@@ -321,6 +315,28 @@ bool BSLTool::flash_image(const char* filepath)
     status = read_file(data, size);
     if(!status) {
         printf("Error reading file %s\n", filepath);
+        return false;
+    }
+
+    if(!force) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        status = verify(data, 0x0, size);
+        if(status) {
+            printf("Already up-to-date");
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            status = start_application();
+            if(status) {
+                return true;
+            }
+        } else {
+            printf("Updating");
+        }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    status = mass_erase();
+    if(!status) {
         return false;
     }
 

@@ -90,6 +90,7 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
             ("firmware-file,i", po::value<string>(), "firmware file")
             ("enter-bsl", po::value<bool>()->default_value(true), "enter BSL mode via GPIOs (default: true)")
             ("verbose", po::value<int>()->default_value(0), "verbosity level 0-3 (default: 0)")
+            ("force", po::value<bool>()->default_value(false), "Force the update (default: false)")
         ;
 
         po::positional_options_description p;
@@ -131,8 +132,8 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
             }
         }
 
-        status = b.flash_image(file_path);
-        return status;
+        status = b.flash_image(file_path, vm["force"].as<bool>());
+        return !status;
     }
     catch(exception& e) {
         cerr << "error: " << e.what() << "\n";
