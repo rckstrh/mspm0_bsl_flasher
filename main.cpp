@@ -74,6 +74,7 @@ int main(int argc, char** argv) {
     }
     catch(...) {
         cerr << "Exception of unknown type!\n";
+        return 1;
     }
 
     return 0;
@@ -128,7 +129,7 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
             status = b.enter_bsl();
             if(!status) {
                 printf("Could not enter BSL mode. Stopping...\n");
-                return status;
+                return !status;
             }
         }
 
@@ -141,6 +142,7 @@ int flash(po::variables_map &vm, po::parsed_options &parsed)
     }
     catch(...) {
         cerr << "Exception of unknown type!\n";
+        return 1;
     }
 
     return 0;
@@ -177,7 +179,7 @@ int reset(po::variables_map &vm, po::parsed_options &parsed)
         printf("Resetting via GPIO\n");
         status = gpio.hard_reset();
 
-        return status;
+        return !status;
     }
     catch(exception& e) {
         cerr << "error: " << e.what() << "\n";
@@ -185,6 +187,7 @@ int reset(po::variables_map &vm, po::parsed_options &parsed)
     }
     catch(...) {
         cerr << "Exception of unknown type!\n";
+        return 1;
     }
 
     return 0;
@@ -221,7 +224,7 @@ int enter_bsl(po::variables_map &vm, po::parsed_options &parsed)
         printf("Entering BSL mode\n");
         status = gpio.enter_bsl();
 
-        return status;
+        return !status;
     }
     catch(exception& e) {
         cerr << "error: " << e.what() << "\n";
@@ -229,6 +232,7 @@ int enter_bsl(po::variables_map &vm, po::parsed_options &parsed)
     }
     catch(...) {
         cerr << "Exception of unknown type!\n";
+        return 1;
     }
 
     return 0;
@@ -280,6 +284,7 @@ int read_binary_version(po::variables_map &vm, po::parsed_options &parsed)
     }
     catch(...) {
         cerr << "Exception of unknown type!\n";
+        return 1;
     }
 
     return 0;
