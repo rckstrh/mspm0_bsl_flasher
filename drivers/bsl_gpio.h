@@ -13,7 +13,7 @@ class BSL_GPIO {
             uint8_t pin;
         };
 
-        BSL_GPIO(int _verbose_level, _gpio_def _bsl={.bank=1, .pin=12}, _gpio_def _reset={.bank=1, .pin=23});
+        BSL_GPIO(int _verbose_level, _gpio_def _bsl={.bank=_GPIO_BSL_BANK_, .pin=_GPIO_BSL_PIN_}, _gpio_def _reset={.bank=_GPIO_RESET_BANK_, .pin=_GPIO_RESET_PIN_});
         bool hard_reset(uint16_t ms_reset_time=default_ms_reset_time);
         bool enter_bsl();
 
@@ -23,7 +23,7 @@ class BSL_GPIO {
         static constexpr uint16_t default_ms_reset_time = 10;
         static constexpr uint16_t ms_bsl_out_settle = 10;
 
-        // should be changeable later by loading a conf file
+        // at the moment done via cmake flags
         _gpio_def bsl_out;
         _gpio_def reset_out;
 
