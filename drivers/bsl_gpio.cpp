@@ -82,7 +82,7 @@ bool BSL_GPIO::enter_bsl()
 
 bool BSL_GPIO::hard_reset()
 {
-    auto reset_request = gpiod::chip(std::string("gpiochip").append(std::to_string(reset_out.bank))).prepare_request()
+    auto reset_request = gpiod::chip(std::string("/dev/gpiochip").append(std::to_string(reset_out.bank))).prepare_request()
 			.set_consumer("BSL_GPIO::hard_reset()")
 			.add_line_settings(
 				reset_out.pin,
@@ -111,7 +111,7 @@ bool BSL_GPIO::hard_reset()
 
 bool BSL_GPIO::enter_bsl()
 {
-    auto bsl_request = gpiod::chip(std::string("gpiochip").append(std::to_string(bsl_out.bank))).prepare_request()
+    auto bsl_request = gpiod::chip(std::string("/dev/gpiochip").append(std::to_string(bsl_out.bank))).prepare_request()
 			.set_consumer("BSL_GPIO::enter_bsl()")
 			.add_line_settings(
 				bsl_out.pin,
